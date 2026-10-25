@@ -1,0 +1,134 @@
+<launch>
+  <!-- Four independent arm drivers, matching the verified legacy topology. -->
+  <arg name="can_leader_R_port" default="can0" />
+  <arg name="can_follower_R_port" default="can1" />
+  <arg name="can_leader_L_port" default="can2" />
+  <arg name="can_follower_L_port" default="can3" />
+  <arg name="auto_enable" default="true" />
+  <arg name="auto_follow" default="true" />
+  <arg name="check_start_alignment" default="false" />
+  <arg name="enable_recording" default="true" />
+  <arg name="speed" default="40" />
+  <arg name="initial_pose_speed" default="20" />
+  <arg name="initial_pose_timeout" default="15.0" />
+  <arg name="initial_pose_joint_tolerance" default="0.035" />
+  <arg name="initial_pose_gripper_tolerance" default="0.005" />
+  <arg name="mode_timeout" default="10.0" />
+  <arg name="feedback_timeout" default="1.0" />
+  <arg name="monitor_feedback" default="false" />
+  <arg name="stop_both_on_fault" default="false" />
+  <arg name="zero_angle_tolerance" default="0.05" />
+  <arg name="resume_joint_tolerance" default="0.2" />
+  <arg name="resume_gripper_tolerance" default="0.005" />
+  <arg name="service_timeout" default="20.0" />
+  <arg name="right_initial_pose_file" default="$(env HOME)/.config/piper/mcap2_initial_right.yaml" />
+  <arg name="left_initial_pose_file" default="$(env HOME)/.config/piper/mcap2_initial_left.yaml" />
+  <arg name="front_camera" default="/dev/video4" />
+  <arg name="wrist1_camera" default="/dev/video2" />
+  <arg name="wrist2_camera" default="/dev/video0" />
+  <arg name="camera_fps" default="30" />
+  <arg name="record_fps" default="20" />
+  <arg name="camera_width" default="640" />
+  <arg name="camera_height" default="480" />
+  <arg name="camera_fourcc" default="MJPG" />
+  <arg name="camera_backend" default="v4l2" />
+  <arg name="camera_open_timeout" default="5.0" />
+  <arg name="camera_read_timeout" default="2.0" />
+  <arg name="control_timeout" default="20.0" />
+  <arg name="jpeg_quality" default="95" />
+  <arg name="sync_tolerance" default="0.03" />
+  <arg name="sync_wait" default="0.025" />
+  <arg name="sync_delay" default="0.2" />
+  <arg name="camera_sync_tolerance" default="0.03" />
+  <arg name="camera_target_tolerance" default="0.10" />
+  <arg name="max_data_gap" default="1.0" />
+  <arg name="no_preview" default="false" />
+  <arg name="dataset_root" default="$(env HOME)/piper_dataset/dual2" />
+  <arg name="repo_id" default="local/piper_dual2" />
+  <arg name="task" default="bimanual manipulation" />
+  <rosparam param="/mcap2_can_ports" subst_value="true">["$(arg can_leader_R_port)", "$(arg can_follower_R_port)", "$(arg can_leader_L_port)", "$(arg can_follower_L_port)"]</rosparam>
+
+  <group ns="leaderR">
+    <node name="ctrl" pkg="piper" type="piper_mcap2_arm.py" output="screen" required="true">
+      <param name="role" value="leader" />
+      <param name="monitor_feedback" value="$(arg monitor_feedback)" />
+      <param name="can_port" value="$(arg can_leader_R_port)" />
+      <param name="auto_enable" value="$(arg auto_enable)" />
+      <param name="speed" value="$(arg speed)" />
+      <param name="mode_timeout" value="$(arg mode_timeout)" />
+      <param name="feedback_timeout" value="$(arg feedback_timeout)" />
+    </node>
+  </group>
+  <group ns="followerR">
+    <node name="ctrl" pkg="piper" type="piper_mcap2_arm.py" output="screen" required="true">
+      <param name="role" value="follower" />
+      <param name="monitor_feedback" value="$(arg monitor_feedback)" />
+      <param name="can_port" value="$(arg can_follower_R_port)" />
+      <param name="auto_follow" value="$(arg auto_follow)" />
+      <param name="check_start_alignment" value="$(arg check_start_alignment)" />
+      <param name="zero_angle_tolerance" value="$(arg zero_angle_tolerance)" />
+      <param name="auto_enable" value="$(arg auto_enable)" />
+      <param name="speed" value="$(arg speed)" />
+      <param name="mode_timeout" value="$(arg mode_timeout)" />
+      <param name="feedback_timeout" value="$(arg feedback_timeout)" />
+      <param name="initial_pose_file" value="$(arg right_initial_pose_file)" />
+      <param name="initial_pose_speed" value="$(arg initial_pose_speed)" />
+      <param name="initial_pose_timeout" value="$(arg initial_pose_timeout)" />
+      <param name="initial_pose_joint_tolerance" value="$(arg initial_pose_joint_tolerance)" />
+      <param name="initial_pose_gripper_tolerance" value="$(arg initial_pose_gripper_tolerance)" />
+      <remap from="joint_ctrl_single" to="/leaderR/joint_grip_pose" />
+    </node>
+  </group>
+  <group ns="leaderL">
+    <node name="ctrl" pkg="piper" type="piper_mcap2_arm.py" output="screen" required="true">
+      <param name="role" value="leader" />
+      <param name="monitor_feedback" value="$(arg monitor_feedback)" />
+      <param name="can_port" value="$(arg can_leader_L_port)" />
+      <param name="auto_enable" value="$(arg auto_enable)" />
+      <param name="speed" value="$(arg speed)" />
+      <param name="mode_timeout" value="$(arg mode_timeout)" />
+      <param name="feedback_timeout" value="$(arg feedback_timeout)" />
+    </node>
+  </group>
+  <group ns="followerL">
+    <node name="ctrl" pkg="piper" type="piper_mcap2_arm.py" output="screen" required="true">
+      <param name="role" value="follower" />
+      <param name="monitor_feedback" value="$(arg monitor_feedback)" />
+      <param name="can_port" value="$(arg can_follower_L_port)" />
+      <param name="auto_follow" value="$(arg auto_follow)" />
+      <param name="check_start_alignment" value="$(arg check_start_alignment)" />
+      <param name="zero_angle_tolerance" value="$(arg zero_angle_tolerance)" />
+      <param name="auto_enable" value="$(arg auto_enable)" />
+      <param name="speed" value="$(arg speed)" />
+      <param name="mode_timeout" value="$(arg mode_timeout)" />
+      <param name="feedback_timeout" value="$(arg feedback_timeout)" />
+      <param name="initial_pose_file" value="$(arg left_initial_pose_file)" />
+      <param name="initial_pose_speed" value="$(arg initial_pose_speed)" />
+      <param name="initial_pose_timeout" value="$(arg initial_pose_timeout)" />
+      <param name="initial_pose_joint_tolerance" value="$(arg initial_pose_joint_tolerance)" />
+      <param name="initial_pose_gripper_tolerance" value="$(arg initial_pose_gripper_tolerance)" />
+      <remap from="joint_ctrl_single" to="/leaderL/joint_grip_pose" />
+    </node>
+  </group>
+  <node name="dual_piper_coordinator" pkg="piper" type="piper_mcap2_coordinator.py" output="screen" required="true">
+    <param name="auto_follow" value="$(arg auto_follow)" />
+    <param name="check_start_alignment" value="$(arg check_start_alignment)" />
+    <param name="monitor_feedback" value="$(arg monitor_feedback)" />
+    <param name="stop_both_on_fault" value="$(arg stop_both_on_fault)" />
+    <param name="feedback_timeout" value="$(arg feedback_timeout)" />
+    <param name="resume_joint_tolerance" value="$(arg resume_joint_tolerance)" />
+    <param name="resume_gripper_tolerance" value="$(arg resume_gripper_tolerance)" />
+    <param name="service_timeout" value="$(arg service_timeout)" />
+  </node>
+  <node name="dual_mcap2_recorder" pkg="piper" type="record_dual_piper_mcap2.py" output="screen"
+        required="true" if="$(arg enable_recording)"
+        args="--root &quot;$(arg dataset_root)&quot; --repo-id &quot;$(arg repo_id)&quot; --task &quot;$(arg task)&quot;
+              --front-camera $(arg front_camera) --wrist1-camera $(arg wrist1_camera) --wrist2-camera $(arg wrist2_camera)
+              --fps $(arg record_fps) --camera-fps $(arg camera_fps) --width $(arg camera_width) --height $(arg camera_height)
+              --fourcc $(arg camera_fourcc) --backend $(arg camera_backend) --jpeg-quality $(arg jpeg_quality)
+              --camera-open-timeout $(arg camera_open_timeout) --sync-tolerance $(arg sync_tolerance) --sync-wait $(arg sync_wait)
+              --camera-read-timeout $(arg camera_read_timeout) --control-timeout $(arg control_timeout)
+              --sync-delay $(arg sync_delay)
+              --camera-sync-tolerance $(arg camera_sync_tolerance) --camera-target-tolerance $(arg camera_target_tolerance)
+              --max-data-gap $(arg max_data_gap) --no-preview $(arg no_preview)" />
+</launch>

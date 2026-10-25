@@ -1,0 +1,48 @@
+# PiPER initialization target used by go_initial_pose.py.
+# Units: joint1..joint6 = rad, gripper = m.
+# Values are never clipped. go_initial_pose.py checks the official SDK joint
+# limits and every interpolated point before sending a command.
+target:
+#pbl
+  # joint1: -0.014273
+  # joint2: 0.994565
+  # joint3: -0.739115
+  # joint4: -0.000400
+  # joint5: 0.939558
+  # joint6: -0.066569
+  # gripper: 0.000400
+#demo1
+  # joint1: -0.157958
+  # joint2:  1.704879
+  # joint3: -1.407341
+  # joint4:  0.039313
+  # joint5:  0.841057
+  # joint6: -0.210019
+  # gripper: 0.000394
+#demo2
+  # joint1:  0.010812
+  # joint2:  1.103861
+  # joint3: -0.888488
+  # joint4: -0.055141
+  # joint5:  0.791184
+  # joint6:  0.038136
+  # gripper: 0.000402
+#demo3
+  # joint1: -0.007080200
+  # joint2:  1.100175277
+  # joint3: -0.028818433
+  # joint4:  0.010710567
+  # joint5: -0.756417636
+  # joint6:  0.472856769
+  # gripper: 0.097723334
+#pbl6
+  joint1:  0.00
+  joint2:  0.555039961
+  joint3: -0.738515702
+  joint4:  0.000
+  joint5:  1.025707780
+  joint6:  0.000
+  gripper: 0.000409231
+# Smoothstep trajectory settings.
+move_duration: 3.0
+command_rate: 30.0

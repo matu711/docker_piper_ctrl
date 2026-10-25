@@ -1,0 +1,102 @@
+<launch>
+  <arg name="can_port" default="can0" />
+  <arg name="auto_enable" default="true" />
+  <arg name="gripper_val_mutiple" default="1" />
+  <arg name="action_type" default="joint_absolute" />
+  <arg name="z_min" default="0.01" />
+  <arg name="z_enabled" default="true" />
+  <arg name="dry_run" default="true" />
+  <arg name="dh_is_offset" default="1" />
+  <arg name="ee_orientation_representation" default="euler_rpy_rad" />
+  <arg name="gripper_action_type" default="physical_absolute" />
+  <arg name="gripper_closed_width_m" default="0.0" />
+  <arg name="gripper_open_width_m" default="0.10" />
+  <arg name="gripper_saturation_margin_m" default="0.01" />
+  <arg name="joint_saturation_margin_rad" default="0.1" />
+  <arg name="pbl8_max_translation_delta_m" default="0.005" />
+  <arg name="pbl8_max_rotation_delta_rad" default="0.01" />
+  <arg name="pbl8_reference_mode" default="cumulative" />
+  <arg name="pbl8_feedback_timeout_sec" default="0.5" />
+  <arg name="gripper_max_width_m" default="0.10" />
+  <arg name="driver_command_debug_stats" default="true" />
+  <arg name="driver_command_diagnostic_period_s" default="1.0" />
+  <!-- Camera observations required by piper_vla_runtime. -->
+  <arg name="enable_cameras" default="true" />
+  <arg name="front_camera" default="/dev/video4" />
+  <arg name="wrist_camera" default="/dev/video6" />
+  <arg name="camera_width" default="640" />
+  <arg name="camera_height" default="480" />
+  <!-- /dev/video6 supports YUYV 30/15/5, not 20 FPS. -->
+  <arg name="front_fourcc" default="YUYV" />
+  <arg name="front_capture_fps" default="30" />
+  <arg name="wrist_fourcc" default="MJPG" />
+  <arg name="wrist_capture_fps" default="30" />
+  <arg name="camera_publish_fps" default="20" />
+  <arg name="camera_jpeg_quality" default="90" />
+  <arg name="camera_debug_stats" default="false" />
+  <arg name="camera_diagnostic_period_s" default="5.0" />
+
+  <!-- Existing low-level driver. It exclusively owns PiPER SDK and CAN. -->
+  <node name="piper_ctrl_single_node" pkg="piper" type="piper_ctrl_single_node.py" output="screen">
+    <param name="can_port" value="$(arg can_port)" />
+    <param name="auto_enable" value="$(arg auto_enable)" />
+    <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
+    <param name="gripper_max_width_m" value="$(arg gripper_max_width_m)" />
+    <param name="command_debug_stats"
+           value="$(arg driver_command_debug_stats)" />
+    <param name="command_diagnostic_period_s"
+           value="$(arg driver_command_diagnostic_period_s)" />
+    <param name="gripper_exist" value="true" />
+    <remap from="joint_ctrl_single" to="/joint_states" />
+  </node>
+
+  <node name="vla_piper_controller" pkg="piper" type="vla_piper_controller.py" output="screen">
+    <param name="action_type" value="$(arg action_type)" />
+    <param name="z_min" value="$(arg z_min)" />
+    <param name="z_enabled" value="$(arg z_enabled)" />
+    <param name="dry_run" value="$(arg dry_run)" />
+    <param name="dh_is_offset" value="$(arg dh_is_offset)" />
+    <param name="ee_orientation_representation"
+           value="$(arg ee_orientation_representation)" />
+    <param name="gripper_action_type"
+           value="$(arg gripper_action_type)" />
+    <param name="gripper_closed_width_m"
+           value="$(arg gripper_closed_width_m)" />
+    <param name="gripper_open_width_m"
+           value="$(arg gripper_open_width_m)" />
+    <param name="gripper_saturation_margin_m"
+           value="$(arg gripper_saturation_margin_m)" />
+    <param name="joint_saturation_margin_rad"
+           value="$(arg joint_saturation_margin_rad)" />
+    <param name="pbl8_max_translation_delta_m"
+           value="$(arg pbl8_max_translation_delta_m)" />
+    <param name="pbl8_max_rotation_delta_rad"
+           value="$(arg pbl8_max_rotation_delta_rad)" />
+    <param name="pbl8_reference_mode"
+           value="$(arg pbl8_reference_mode)" />
+    <param name="pbl8_feedback_timeout_sec"
+           value="$(arg pbl8_feedback_timeout_sec)" />
+  </node>
+
+  <!-- Publishes the exact CompressedImage topics configured in
+       piper_vla_runtime/configs/runtime.yaml. -->
+  <node if="$(arg enable_cameras)"
+        name="vla_dual_camera_publisher"
+        pkg="piper"
+        type="dual_compressed_camera_publisher.py"
+        output="screen"
+        required="true">
+    <param name="front_camera" value="$(arg front_camera)" />
+    <param name="wrist_camera" value="$(arg wrist_camera)" />
+    <param name="width" value="$(arg camera_width)" />
+    <param name="height" value="$(arg camera_height)" />
+    <param name="front_fourcc" value="$(arg front_fourcc)" />
+    <param name="front_capture_fps" value="$(arg front_capture_fps)" />
+    <param name="wrist_fourcc" value="$(arg wrist_fourcc)" />
+    <param name="wrist_capture_fps" value="$(arg wrist_capture_fps)" />
+    <param name="publish_fps" value="$(arg camera_publish_fps)" />
+    <param name="jpeg_quality" value="$(arg camera_jpeg_quality)" />
+    <param name="camera_debug_stats" value="$(arg camera_debug_stats)" />
+    <param name="diagnostic_period_s" value="$(arg camera_diagnostic_period_s)" />
+  </node>
+</launch>

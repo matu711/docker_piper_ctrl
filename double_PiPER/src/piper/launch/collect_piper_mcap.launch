@@ -1,0 +1,158 @@
+<launch>
+  <!-- ======================================================= -->
+  <!-- PiPER leader-follower settings                          -->
+  <!-- ======================================================= -->
+  <arg name="can_follower_port" default="can0" />
+  <arg name="can_leader_port" default="can1" />
+  <arg name="auto_enable" default="true" />
+  <arg name="gripper_val_mutiple" default="1" />
+
+  <!-- ======================================================= -->
+  <!-- Recording settings                                      -->
+  <!-- ======================================================= -->
+  <arg name="enable_recording" default="true" />
+
+  <!-- Raw leader: MCAP diagnostic/reference only -->
+  <arg name="leader_topic"
+       default="/leader/joint_grip_pose" />
+
+  <!-- IMPORTANT:
+       Dataset action = command actually sent to follower -->
+  <arg name="action_topic"
+       default="/follower/applied_joint_cmd" />
+
+  <!-- Dataset observation.state = follower measured state -->
+  <arg name="follower_topic"
+       default="/follower/current_joint_obs" />
+  <arg name="ee_topic" default="/follower/end_pose" />
+  <arg name="ee_euler_topic" default="/follower/end_pose_euler" />
+
+  <!-- Persist this path on the host-mounted HOME when using Docker. -->
+  <arg name="initial_pose_file"
+       default="$(env HOME)/.config/piper/initial_pose.yaml" />
+  <arg name="initial_pose_speed" default="20" />
+  <arg name="initial_pose_timeout" default="15.0" />
+  <arg name="initial_pose_joint_tolerance" default="0.035" />
+  <arg name="initial_pose_gripper_tolerance" default="0.005" />
+  <!-- The hardware keeps the demonstration leader in TEACHING_MODE.
+       Default to the verified-safe follower-only initial-pose return. -->
+  <arg name="return_leader_with_follower" default="false" />
+  <arg name="initial_pose_mode_timeout" default="3.0" />
+
+  <arg name="front_camera" default="/dev/video6" />
+  <arg name="wrist_camera" default="/dev/video0" />
+
+  <arg name="dataset_root"
+       default="$(env HOME)/piper_dataset" />
+  <arg name="repo_id"
+       default="local/piper_pickup" />
+  <arg name="robot_type"
+       default="piper_single_arm" />
+  <arg name="task"
+       default="Align the bags, grasp them, and lift them up." />
+
+  <arg name="record_fps" default="20" />
+  <arg name="camera_fps" default="30" />
+  <arg name="camera_width" default="640" />
+  <arg name="camera_height" default="480" />
+  <!-- MJPG avoids saturating USB bandwidth with two raw YUYV streams. -->
+  <arg name="camera_fourcc" default="MJPG" />
+  <arg name="state_dim" default="7" />
+
+  <!-- Timestamp synchronization.
+       State/action farther than 30 ms from image time are rejected. -->
+  <arg name="sync_tolerance" default="0.03" />
+  <arg name="sync_wait" default="0.025" />
+  <arg name="camera_sync_tolerance" default="0.03" />
+  <!-- Camera reuse keeps the 20 Hz learning grid when capture is slower. -->
+  <arg name="camera_sync_wait" default="0.10" />
+  <!-- Reused camera frames must remain within 100 ms of the 20 Hz grid. -->
+  <arg name="camera_target_tolerance" default="0.10" />
+
+  <!-- ================= Leader ================= -->
+  <group ns="leader">
+    <node name="ctrl"
+          pkg="piper"
+          type="piper_ctrl_leader_node_new.py"
+          output="screen">
+      <param name="can_port"
+             value="$(arg can_leader_port)" />
+      <param name="auto_enable"
+             value="$(arg auto_enable)" />
+      <param name="gripper_val_mutiple"
+             value="$(arg gripper_val_mutiple)" />
+      <param name="gripper_exist"
+             value="true" />
+      <param name="initial_pose_file" value="$(arg initial_pose_file)" />
+      <param name="initial_pose_speed" value="$(arg initial_pose_speed)" />
+      <param name="initial_pose_timeout" value="$(arg initial_pose_timeout)" />
+      <param name="initial_pose_joint_tolerance" value="$(arg initial_pose_joint_tolerance)" />
+      <param name="initial_pose_gripper_tolerance" value="$(arg initial_pose_gripper_tolerance)" />
+      <param name="initial_pose_mode_timeout" value="$(arg initial_pose_mode_timeout)" />
+      <remap from="joint_ctrl_single"
+             to="joint_grip_pose" />
+    </node>
+  </group>
+
+  <!-- ================= Follower ================= -->
+  <group ns="follower">
+    <node name="ctrl"
+          pkg="piper"
+          type="piper_ctrl_follower_node.py"
+          output="screen">
+      <param name="can_port"
+             value="$(arg can_follower_port)" />
+      <param name="auto_enable"
+             value="$(arg auto_enable)" />
+      <param name="gripper_val_mutiple"
+             value="$(arg gripper_val_mutiple)" />
+      <param name="gripper_exist"
+             value="true" />
+      <param name="initial_pose_file" value="$(arg initial_pose_file)" />
+      <param name="initial_pose_speed" value="$(arg initial_pose_speed)" />
+      <param name="initial_pose_timeout" value="$(arg initial_pose_timeout)" />
+      <param name="initial_pose_joint_tolerance" value="$(arg initial_pose_joint_tolerance)" />
+      <param name="initial_pose_gripper_tolerance" value="$(arg initial_pose_gripper_tolerance)" />
+      <param name="return_leader_with_follower" value="$(arg return_leader_with_follower)" />
+
+      <remap from="joint_ctrl_single"
+             to="/leader/joint_grip_pose" />
+
+      <remap from="/end_pose_euler"
+             to="/leader/end_pose_euler" />
+    </node>
+  </group>
+
+  <!-- ================= Recorder ================= -->
+  <group if="$(arg enable_recording)">
+    <node name="mcap_recorder"
+          pkg="piper"
+          type="record_piper_mcap.py"
+          output="screen"
+          required="false"
+          args="
+            --leader-topic $(arg leader_topic)
+            --action-topic $(arg action_topic)
+            --follower-topic $(arg follower_topic)
+            --ee-topic $(arg ee_topic)
+            --ee-euler-topic $(arg ee_euler_topic)
+            --front-camera $(arg front_camera)
+            --wrist-camera $(arg wrist_camera)
+            --root $(arg dataset_root)
+            --repo-id $(arg repo_id)
+            --robot-type $(arg robot_type)
+            --task &quot;$(arg task)&quot;
+            --fps $(arg record_fps)
+            --camera-fps $(arg camera_fps)
+            --width $(arg camera_width)
+            --height $(arg camera_height)
+            --camera-fourcc $(arg camera_fourcc)
+            --state-dim $(arg state_dim)
+            --sync-tolerance $(arg sync_tolerance)
+            --sync-wait $(arg sync_wait)
+            --camera-sync-tolerance $(arg camera_sync_tolerance)
+            --camera-sync-wait $(arg camera_sync_wait)
+            --camera-target-tolerance $(arg camera_target_tolerance)
+          " />
+  </group>
+</launch>

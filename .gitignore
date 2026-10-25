@@ -1,0 +1,91 @@
+# =========================
+# ROS / Catkin
+# =========================
+build/
+devel/
+logs/
+log/
+
+**/build/
+**/devel/
+**/logs/
+**/log/
+**/install/
+
+.catkin_tools/
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+.venv/
+.venv-piper-zero/
+venv/
+
+# =========================
+# Editor
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# OS
+# =========================
+.DS_Store
+
+# =========================
+# ROS recorded data
+# =========================
+*.bag
+*.mcap
+piper_dataset/*
+!piper_dataset/.gitkeep
+/dataset_old/
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.bak
+.cache/
+.ros/
+
+# Generated experiment output / model weights
+/results/
+/outputs/
+/checkpoints/
+/runs/
+/wandb/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Credentials and local agent configuration
+.aws/
+.ssh/
+.codex/
+.agents/
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+credentials.json
+token.json

@@ -1,0 +1,121 @@
+<launch>
+  <!-- No leaders: one dual feedback-stamped driver exclusively owns each CAN. -->
+  <arg name="left_can_port" default="can3" />
+  <arg name="right_can_port" default="can1" />
+  <arg name="auto_enable" default="true" />
+  <arg name="start_sdk_joint_limit" default="true" />
+  <arg name="controller_joint_limit_enabled" default="true" />
+  <arg name="dry_run" default="true" />
+  <arg name="mock_driver" default="false" />
+  <arg name="state_timeout_s" default="0.5" />
+  <arg name="action_type" default="joint_absolute" />
+  <arg name="z_min" default="0.01" />
+  <arg name="z_enabled" default="true" />
+  <arg name="dh_is_offset" default="1" />
+  <arg name="joint_saturation_margin_rad" default="0.1" />
+  <arg name="gripper_closed_width_m" default="0.0" />
+  <arg name="gripper_open_width_m" default="0.10" />
+  <arg name="gripper_saturation_margin_m" default="0.01" />
+  <arg name="gripper_max_width_m" default="0.10" />
+  <arg name="gripper_val_mutiple" default="1" />
+  <arg name="driver_command_debug_stats" default="true" />
+  <arg name="driver_command_diagnostic_period_s" default="1.0" />
+  <arg name="enable_cameras" default="$(eval not arg('mock_driver'))" />
+  <!-- Verify physical left/right camera mounting; video numbers are not stable. -->
+  <arg name="front_camera" default="/dev/video4" />
+  <arg name="left_wrist_camera" default="/dev/video2" />
+  <arg name="right_wrist_camera" default="/dev/video0" />
+  <arg name="camera_width" default="640" />
+  <arg name="camera_height" default="480" />
+  <arg name="front_width" default="1280" />
+  <arg name="front_height" default="720" />
+  <arg name="front_fourcc" default="MJPG" />
+  <arg name="left_wrist_fourcc" default="MJPG" />
+  <arg name="right_wrist_fourcc" default="MJPG" />
+  <arg name="front_capture_fps" default="30" />
+  <arg name="left_wrist_capture_fps" default="30" />
+  <arg name="right_wrist_capture_fps" default="30" />
+  <arg name="camera_publish_fps" default="20" />
+  <arg name="camera_jpeg_quality" default="90" />
+  <arg name="camera_debug_stats" default="false" />
+  <arg name="camera_diagnostic_period_s" default="5.0" />
+
+  <group ns="followerL">
+    <node name="piper_ctrl_single_node" pkg="piper" type="piper_ctrl_dual_feedback_node.py" unless="$(arg mock_driver)" output="screen" required="true">
+      <param name="feedback_timeout_s" value="$(arg state_timeout_s)" />
+      <param name="can_port" value="$(arg left_can_port)" />
+      <param name="start_sdk_joint_limit" type="bool" value="$(arg start_sdk_joint_limit)" />
+      <!-- dry_run never automatically enables real hardware. Initialization
+           still opens CAN and sends MotionCtrl_2 in the unchanged driver. -->
+      <param name="auto_enable" value="$(eval arg('auto_enable') and not arg('dry_run'))" />
+      <param name="gripper_exist" value="true" />
+      <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
+      <param name="gripper_max_width_m" value="$(arg gripper_max_width_m)" />
+      <param name="command_debug_stats" value="$(arg driver_command_debug_stats)" />
+      <param name="command_diagnostic_period_s" value="$(arg driver_command_diagnostic_period_s)" />
+      <remap from="joint_ctrl_single" to="joint_states" />
+    </node>
+    <node name="mock_driver" pkg="piper" type="vla_dual_mock_driver.py"
+          if="$(arg mock_driver)" output="screen" required="true">
+      <param name="feedback_timeout_s" value="$(arg state_timeout_s)" />
+      <remap from="joint_ctrl_single" to="joint_states" />
+    </node>
+  </group>
+  <group ns="followerR">
+    <node name="piper_ctrl_single_node" pkg="piper" type="piper_ctrl_dual_feedback_node.py" unless="$(arg mock_driver)" output="screen" required="true">
+      <param name="feedback_timeout_s" value="$(arg state_timeout_s)" />
+      <param name="can_port" value="$(arg right_can_port)" />
+      <param name="start_sdk_joint_limit" type="bool" value="$(arg start_sdk_joint_limit)" />
+      <!-- dry_run never automatically enables real hardware. Initialization
+           still opens CAN and sends MotionCtrl_2 in the unchanged driver. -->
+      <param name="auto_enable" value="$(eval arg('auto_enable') and not arg('dry_run'))" />
+      <param name="gripper_exist" value="true" />
+      <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
+      <param name="gripper_max_width_m" value="$(arg gripper_max_width_m)" />
+      <param name="command_debug_stats" value="$(arg driver_command_debug_stats)" />
+      <param name="command_diagnostic_period_s" value="$(arg driver_command_diagnostic_period_s)" />
+      <remap from="joint_ctrl_single" to="joint_states" />
+    </node>
+    <node name="mock_driver" pkg="piper" type="vla_dual_mock_driver.py"
+          if="$(arg mock_driver)" output="screen" required="true">
+      <param name="feedback_timeout_s" value="$(arg state_timeout_s)" />
+      <remap from="joint_ctrl_single" to="joint_states" />
+    </node>
+  </group>
+  <node name="vla_dual_piper_controller" pkg="piper" type="vla_dual_piper_controller.py" output="screen" required="true">
+    <param name="controller_joint_limit_enabled" type="bool" value="$(arg controller_joint_limit_enabled)" />
+    <param name="state_timeout_s" value="$(arg state_timeout_s)" />
+    <param name="action_type" value="$(arg action_type)" />
+    <param name="left_namespace" value="/followerL" />
+    <param name="right_namespace" value="/followerR" />
+    <param name="dry_run" value="$(arg dry_run)" />
+    <param name="z_min" value="$(arg z_min)" />
+    <param name="z_enabled" value="$(arg z_enabled)" />
+    <param name="dh_is_offset" value="$(arg dh_is_offset)" />
+    <param name="joint_saturation_margin_rad" value="$(arg joint_saturation_margin_rad)" />
+    <param name="gripper_closed_width_m" value="$(arg gripper_closed_width_m)" />
+    <param name="gripper_open_width_m" value="$(arg gripper_open_width_m)" />
+    <param name="gripper_saturation_margin_m" value="$(arg gripper_saturation_margin_m)" />
+  </node>
+  <node if="$(arg enable_cameras)" name="vla_dual_camera_publisher" pkg="piper" type="vla_dual_camera_publisher.py" output="screen" required="true">
+    <param name="front_camera" value="$(arg front_camera)" />
+    <param name="left_wrist_camera" value="$(arg left_wrist_camera)" />
+    <param name="right_wrist_camera" value="$(arg right_wrist_camera)" />
+    <param name="front_width" value="$(arg front_width)" />
+    <param name="front_height" value="$(arg front_height)" />
+    <param name="left_wrist_width" value="$(arg camera_width)" />
+    <param name="left_wrist_height" value="$(arg camera_height)" />
+    <param name="right_wrist_width" value="$(arg camera_width)" />
+    <param name="right_wrist_height" value="$(arg camera_height)" />
+    <param name="front_fourcc" value="$(arg front_fourcc)" />
+    <param name="left_wrist_fourcc" value="$(arg left_wrist_fourcc)" />
+    <param name="right_wrist_fourcc" value="$(arg right_wrist_fourcc)" />
+    <param name="front_capture_fps" value="$(arg front_capture_fps)" />
+    <param name="left_wrist_capture_fps" value="$(arg left_wrist_capture_fps)" />
+    <param name="right_wrist_capture_fps" value="$(arg right_wrist_capture_fps)" />
+    <param name="publish_fps" value="$(arg camera_publish_fps)" />
+    <param name="jpeg_quality" value="$(arg camera_jpeg_quality)" />
+    <param name="camera_debug_stats" value="$(arg camera_debug_stats)" />
+    <param name="diagnostic_period_s" value="$(arg camera_diagnostic_period_s)" />
+  </node>
+</launch>

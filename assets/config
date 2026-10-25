@@ -1,0 +1,27 @@
+[global_config]
+  title_receive_bg_color = "#64d8ff"
+  enabled_plugins = TerminalShot, LaunchpadCodeURLHandler, APTURLHandler, Logger, LaunchpadBugURLHandler
+  title_transmit_bg_color = "#15b0dc"
+[keybindings]
+full_screen = <Ctrl><Shift>F11
+
+[profiles]
+[[default]]
+    background_color = "#0a2630"
+    background_darkness = 1.0
+    background_type = transparent
+    cursor_color = "#aaaaaa"
+    foreground_color = "#ffffff"
+    use_system_font = False
+    scroll_background = False
+    font = Consolas 9
+    scrollback_infinite = True
+[layouts]
+  [[default]]
+    [[[child1]]]
+      type = Terminal
+      parent = window0
+    [[[window0]]]
+      type = Window
+      parent = ""
+[plugins]

@@ -1,0 +1,43 @@
+# Goals: measured follower State, NOT leader Action.
+# Source: piper_dataset/dnp1_20261015/20261015_153856/frames.csv, frame_index=0.
+# This recorded starting pose is not evidence of a collision-free return path.
+# Units: joints rad; gripper total opening m. No sign mirroring or clipping.
+targets:
+  left:
+    joint1: -0.48916301131248474
+    joint2: 1.237159013748169
+    joint3: -1.477403998374939
+    joint4: -0.4351629912853241
+    joint5: 0.6707469820976257
+    joint6: 0.44823500514030457
+    gripper: 0.05249999836087227
+  right:
+    joint1: 0.5193930268287659
+    joint2: 1.104112982749939
+    joint3: -1.5012099742889404
+    joint4: 0.17336399853229523
+    joint5: 0.825452983379364
+    joint6: -0.24684199690818787
+    gripper: 9.999999747378752e-05
+# Same defaults as single-arm piper_demo_start.yaml.
+move_duration: 3.0
+command_rate: 30.0
+can_ports:
+  left: can3
+  right: can1
+# Existing single-arm return limits/timeouts; strict limits, no clamp.
+z_enabled: true
+z_min: 0.01
+gripper_max_width_m: 0.10
+dh_is_offset: 1
+driver_detection_timeout: 2.0
+feedback_timeout: 1.0
+arrival_timeout: 10.0
+sdk_enable_timeout: 10.0
+joint_tolerance_rad: 0.02
+gripper_tolerance_m: 0.002
+direct_speed_percent: 10
+# Match dual collection synchronization tolerance. Dispatch budget also 30 ms.
+feedback_sync_tolerance: 0.03
+command_sync_tolerance: 0.03
+service_timeout: 3.0
