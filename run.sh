@@ -1,4 +1,5 @@
-export USR_NAME=dnp218
+#!/bin/sh
+export USR_NAME=${USR_NAME:-$(id -un)}
 
 PIPER_CTRL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
 
@@ -6,6 +7,9 @@ if [ -z "${DISPLAY:-}" ]; then
 	echo 'DISPLAY is not set. Run this script from an X11 desktop or forwarded X11 session.' >&2
 	exit 1
 fi
+
+# Create writable persistent mounts as the host user on a fresh clone.
+mkdir -p "${PIPER_CTRL_DIR}/piper_dataset" "$HOME/.config/piper" || exit 1
 
 # Reuse the desktop session's cookie, including GDM/Wayland Xwayland paths.
 # If there is no cookie file, authorize the actual runtime user via X11.
@@ -43,18 +47,19 @@ docker run --rm -it \
 	--name piper-control-dev \
 	-w /home/${USR_NAME}/docker_piper_ctrl \
 	--volume "${PIPER_CTRL_DIR}:/home/${USR_NAME}/docker_piper_ctrl" \
-	--volume "${PIPER_CTRL_DIR}/double_PiPER:/home/${USR_NAME}/double_PiPER" \
 	--volume "${PIPER_CTRL_DIR}/piper_dataset:/home/${USR_NAME}/piper_dataset" \
 	--volume "$HOME/.config/piper:/home/${USR_NAME}/.config/piper" \
 	"$@" \
 	--volume /tmp/.X11-unix:/tmp/.X11-unix -e "DISPLAY=${DISPLAY}" \
+	-e "XMODIFIERS=${XMODIFIERS:-}" \
+	-e "PIPER_WORKSPACE=/home/${USR_NAME}/docker_piper_ctrl/double_PiPER" \
 	--privileged --net=host --ipc=host \
 	${PIPER_CAMERA_DEVICE_ARGS} \
 	-e DOCKER_USER_NAME=$(id -un) \
 	-e DOCKER_USER_ID=$(id -u) \
 	-e DOCKER_USER_GROUP_NAME=$(id -gn) \
 	-e DOCKER_USER_GROUP_ID=$(id -g) \
-	piper-control:noetic
+	"${PIPER_IMAGE:-piper-control:noetic}"
 	# --gpus all \
 	# --device /dev/input/js1:/dev/input/js1 \
 	# --device /dev/input/js2:/dev/input/js2 \

@@ -14,13 +14,19 @@ from mcap.reader import make_reader
 from sensor_msgs.msg import JointState
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "piper/scripts"))
-import record_piper_mcap as recorder
+import piper_recording_common as recorder
 
 
 class SingleRecordingTests(unittest.TestCase):
     def args(self):
-        with patch.object(sys, "argv", ["record_piper_mcap.py"]):
-            return recorder.parse_args()
+        from types import SimpleNamespace
+        return SimpleNamespace(task="synthetic", fps=20, state_dim=7,
+            follower_topic="/follower/current_joint_obs", action_topic="/follower/applied_joint_cmd",
+            ee_topic="/follower/end_pose", leader_topic="/leader/joint_grip_pose",
+            sync_tolerance=.03, sync_wait=.025, camera_sync_tolerance=.03,
+            camera_sync_wait=.1, camera_target_tolerance=.1, camera_fourcc="MJPG",
+            camera_fps=30, front_camera="front", wrist_camera="wrist", width=640,
+            height=480, repo_id="local/test", robot_type="piper_single_arm")
 
     def test_saved_episode_keeps_state_action_ee_and_images_aligned(self):
         with tempfile.TemporaryDirectory() as root:

@@ -132,6 +132,13 @@ class VlaDualPiperController:
         self.safety_reason_pub = rospy.Publisher("/safety/reason", String, queue_size=10)
         # Non-latched: a completed fault must not stop a later Runtime session.
         self.fault_pub = rospy.Publisher("/vla_dual/controller_fault", String, queue_size=10)
+        # One non-latched status stream, independent of Action reception. The
+        # token is the existing session token, never an additional epoch/lease.
+        self.status_rate_hz = rospy.get_param("~controller_status_rate_hz", 20.0)
+        if (isinstance(self.status_rate_hz, bool)
+                or not math.isfinite(self.status_rate_hz) or self.status_rate_hz <= 0):
+            raise ValueError("controller_status_rate_hz must be finite and positive")
+        self.status_pub = rospy.Publisher("/vla_dual/controller_status", String, queue_size=1)
         self.subscribers = [
             rospy.Subscriber("/vla_dual/approved_action", Float64MultiArray,
                              self.action_callback, queue_size=1),
@@ -149,8 +156,23 @@ class VlaDualPiperController:
         self.initial_pose_service = rospy.Service(
             "/vla_dual/initial_pose_lock", SetBool, self.initial_pose_lock)
         self.state_watchdog = rospy.Timer(rospy.Duration(1. / 20.), self.check_state_freshness)
+        self.publish_status(None)
+        self.status_timer = rospy.Timer(rospy.Duration(1. / self.status_rate_hz), self.publish_status)
         rospy.loginfo("Dual PiPER: absolute [left7, right7]; initial HOLD; dry_run=%s",
                       self.arms["left"].dry_run)
+
+    def publish_status(self, _event):
+        """Snapshot and publish under the same lock as start/stop/actions.
+
+        stamp_ns is ROS time at snapshot, not callback receipt time. Receivers
+        must check source age and advancing stamps as well as local silence.
+        """
+        with self.lock:
+            state = ("FAULT" if self.fault_latched else
+                     "HOLD" if self.hold_requested or self.session_token is None else "RUNNING")
+            self.status_pub.publish(json.dumps(dict(
+                schema=1, state=state, token=self.session_token or "",
+                stamp_ns=rospy.Time.now().to_nsec())))
 
     def hold(self, reason):
         for arm in self.arms.values():

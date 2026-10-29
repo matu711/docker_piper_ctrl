@@ -1,10 +1,42 @@
 """Pure follower command validation. No ROS, SDK connections or device I/O.
 
-Joint bounds are supplied by a read-only ``get_joint_limits('j1' ... 'j6')``
-callable. ``error_style`` preserves each driver's diagnostic wording and pose
-validation order; the numerical limits and rounding are shared.
+Normal following uses directional clipping without fixed joint-angle bounds.
+Saved-pose validation keeps the read-only ``get_joint_limits('j1' ... 'j6')``
+callable and each driver's diagnostic wording/validation order.
 """
 import math
+
+
+def _sdk_integer(value, label):
+    """Check the encoded value before any SDK call can send a partial command."""
+    if not math.isfinite(value):
+        raise ValueError("%s SDK integer conversion is not finite" % label)
+    encoded = round(value)
+    if not -(2**31) <= encoded <= 2**31-1:
+        raise ValueError("%s outside SDK signed int32 range" % label)
+    return encoded
+
+
+def prepare_follow_command(positions):
+    """Copy/normalize a rad/m leader command, returning SDK-quantized rad/m.
+
+    Only J2's negative side, J3's positive side and gripper width are clipped.
+    This policy is for normal following, never saved-pose/automatic returns.
+    Raw inputs must fit the SDK integer representation even when clipping
+    would hide an extreme value. No SDK, firmware or mechanical limit changes.
+    """
+    values = parse_follow_command(positions)
+    # Validate every raw component before clipping can mask numeric corruption.
+    for index, value in enumerate(values[:6], 1):
+        _sdk_integer(math.degrees(value)*1000, "joint%d" % index)
+    _sdk_integer(values[6]*1e6, "gripper")
+    values[1] = max(values[1], 0.0)
+    values[2] = min(values[2], 0.0)
+    gripper = clip_gripper(values[6])
+    joints = [math.radians(_sdk_integer(math.degrees(value)*1000, "joint%d" % index)/1000)
+              for index, value in enumerate(values[:6], 1)]
+    gripper = _sdk_integer(gripper*1e6, "gripper")/1e6
+    return joints, gripper
 
 
 def parse_follow_command(positions):

@@ -1,4 +1,9 @@
 <launch>
+  <!-- Joint1..6 step limits from YAML, rad per 20 Hz step.
+       Empty overrides use the file; missing/invalid limits reject Controller startup. -->
+  <arg name="motion_limits_file" default="$(find piper)/config/vla_dual_motion_limits.yaml" />
+  <arg name="max_delta_left" default="" doc="Optional YAML list overriding the left limits in motion_limits_file" />
+  <arg name="max_delta_right" default="" doc="Optional YAML list overriding the right limits in motion_limits_file" />
   <!-- No leaders: one dual feedback-stamped driver exclusively owns each CAN. -->
   <arg name="left_can_port" default="can3" />
   <arg name="right_can_port" default="can1" />
@@ -83,6 +88,12 @@
     </node>
   </group>
   <node name="vla_dual_piper_controller" pkg="piper" type="vla_dual_piper_controller.py" output="screen" required="true">
+    <!-- Reset missing keys so an incomplete file cannot reuse old ROS parameters. -->
+    <rosparam param="max_delta_left">[]</rosparam>
+    <rosparam param="max_delta_right">[]</rosparam>
+    <rosparam command="load" file="$(arg motion_limits_file)" />
+    <rosparam if="$(eval arg('max_delta_left') != '')" param="max_delta_left" subst_value="true">$(arg max_delta_left)</rosparam>
+    <rosparam if="$(eval arg('max_delta_right') != '')" param="max_delta_right" subst_value="true">$(arg max_delta_right)</rosparam>
     <param name="controller_joint_limit_enabled" type="bool" value="$(arg controller_joint_limit_enabled)" />
     <param name="state_timeout_s" value="$(arg state_timeout_s)" />
     <param name="action_type" value="$(arg action_type)" />

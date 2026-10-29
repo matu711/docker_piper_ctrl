@@ -1,0 +1,5 @@
+# User-selected defaults (2026-10-29): 20 Hz, rad/step, joint1..joint6.
+# Not a verified physical velocity/acceleration limit. Gripper is excluded.
+# SDK/Controller joint-angle limits remain enabled by default in the launch.
+max_delta_left: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+max_delta_right: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]

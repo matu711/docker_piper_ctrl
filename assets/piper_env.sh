@@ -3,7 +3,11 @@
 if [ -n "${BASH_VERSION:-}" ]; then
     source /opt/ros/noetic/setup.bash
     source /piper_shell.sh
-    if [ -f "${HOME}/double_PiPER/devel/setup.bash" ]; then
-        source "${HOME}/double_PiPER/devel/setup.bash"
+    export PIPER_WORKSPACE="$(_piper_workspace)"
+    if [ -f "$(_piper_workspace)/devel/setup.bash" ]; then
+        piper_env_start_directory=$PWD
+        sorc_devel
+        cd -- "${piper_env_start_directory}"
+        unset piper_env_start_directory
     fi
 fi

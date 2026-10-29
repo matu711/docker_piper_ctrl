@@ -2,6 +2,13 @@
 .aws
 .codex
 .agents
+.ssh
+.env
+.env.*
+**/*.pem
+**/*.key
+reports
+**/.piper-generated-backup.*
 piper_dataset
 **/build
 **/devel

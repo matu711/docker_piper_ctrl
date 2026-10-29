@@ -19,7 +19,7 @@ from std_srvs.srv import SetBool, SetBoolResponse, Trigger, TriggerResponse
 from tf.transformations import quaternion_from_euler
 
 from piper_command_validation import (
-    clip_gripper, parse_follow_command, prepare_sdk_command, validate_pose,
+    prepare_follow_command, prepare_sdk_command, validate_pose,
 )
 
 
@@ -141,9 +141,8 @@ class PiperFollowerNode:
                 # Do not spam the operator console for every leader sample.
                 return
             try:
-                values = parse_follow_command(msg.position)
-                gripper = clip_gripper(values[6])
-                self._dispatch_joint_command(values[:6], gripper, self.move_spd_rate_ctrl)
+                joints, gripper = prepare_follow_command(msg.position)
+                self._send_prepared_joint_command(joints, gripper, self.move_spd_rate_ctrl)
             except Exception as exc:
                 self._trip_command_fault(str(exc))
 
@@ -159,9 +158,16 @@ class PiperFollowerNode:
                 rospy.logerr("%s command fault: %s", self.can_port, reason)
 
     def _dispatch_joint_command(self, joints, gripper, speed):
+        """Strict saved-pose/return path; normal following is prepared separately."""
         if self.command_fault:
             raise RuntimeError("Command fault is latched: %s" % self.command_fault)
         joints, gripper = prepare_sdk_command(joints, gripper, self._validate_initial_pose)
+        self._send_prepared_joint_command(joints, gripper, speed)
+
+    def _send_prepared_joint_command(self, joints, gripper, speed):
+        """Send values already validated/quantized by the appropriate policy."""
+        if self.command_fault:
+            raise RuntimeError("Command fault is latched: %s" % self.command_fault)
         stamp = rospy.Time.now()
         self.piper.move_j(joints, speed)
         if self.gripper_exist:

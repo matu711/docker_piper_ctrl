@@ -3,6 +3,7 @@
 import copy
 import csv
 import importlib.util
+import os
 from pathlib import Path
 import sys
 import types
@@ -299,9 +300,10 @@ class ReturnTests(unittest.TestCase):
 
     def test_goal_matches_optional_recorded_source(self):
         # Real datasets are excluded from Git and Docker build contexts.
-        source_path = ROOT.parents[2] / "piper_dataset/dnp1_20261015/20261015_153856/frames.csv"
-        if not source_path.is_file():
-            self.skipTest("Optional recorded source dataset is unavailable")
+        source = os.environ.get('PIPER_INITIAL_POSE_REFERENCE_CSV')
+        if not source:
+            self.skipTest('Set PIPER_INITIAL_POSE_REFERENCE_CSV for an explicit recorded-pose check')
+        source_path = Path(source)
         cfg = self.m.load_config(ROOT / "config/piper_dual_demo_start.yaml")
         with source_path.open() as source:
             row = next(csv.DictReader(source))

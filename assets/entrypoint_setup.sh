@@ -45,6 +45,15 @@ PY
     fi
     printf '%s ALL=(ALL) NOPASSWD: ALL\n' "${piper_user}" > /etc/sudoers.d/piper-user
     chmod 440 /etc/sudoers.d/piper-user
+    # Only identified generated outputs are repaired. Source/data trees and
+    # symlinks are never traversed. The actual build still runs through gosu.
+    piper_workspace="${PIPER_WORKSPACE:-${piper_home}/docker_piper_ctrl/double_PiPER}"
+    if [ "${piper_workspace}" = "${piper_home}/double_PiPER" ]; then
+        piper_workspace="${piper_home}/docker_piper_ctrl/double_PiPER"
+    fi
+    export PIPER_WORKSPACE="${piper_workspace}"
+    /usr/bin/python3 /piper_generated_permissions.py "${piper_workspace}" \
+        --uid "${DOCKER_USER_ID}" --gid "${DOCKER_USER_GROUP_ID}"
     exec gosu "${piper_user}" "$@"
 fi
 exec "$@"

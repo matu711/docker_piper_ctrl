@@ -57,15 +57,21 @@ RUN groupadd --gid "${USER_GID}" "${USR_NAME}" && \
     mkdir -p "/home/${USR_NAME}/docker_piper_ctrl" && \
     chown "${USR_NAME}:${USR_NAME}" "/home/${USR_NAME}/docker_piper_ctrl"
 
+# Recorder launch-prefix uses xterm. Pillow and CJK fonts render the same
+# UTF-8 task in the camera GUI and terminal, without another GUI framework.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      terminator xterm python3-pil fonts-noto-cjk && \
+    printf '\n*faceName: Noto Sans Mono CJK JP\n*faceNameDoublesize: Noto Sans Mono CJK JP\n*utf8: 2\n' \
+      >> /etc/X11/app-defaults/XTerm && \
+    rm -rf /var/lib/apt/lists/*
+
+
 COPY assets/piper_shell.sh /piper_shell.sh
 COPY assets/piper_env.sh /etc/profile.d/piper.sh
+COPY assets/piper_generated_permissions.py /piper_generated_permissions.py
 COPY assets/entrypoint_setup.sh /entrypoint_setup.sh
 RUN chmod 755 /entrypoint_setup.sh && \
     echo '. /etc/profile.d/piper.sh' >> /etc/bash.bashrc
-
-# Restore the interactive terminal only; keep the CPU/ROS-base environment.
-RUN apt-get update && apt-get install -y --no-install-recommends terminator && \
-    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home/${USR_NAME}/docker_piper_ctrl
 ENTRYPOINT ["/entrypoint_setup.sh"]

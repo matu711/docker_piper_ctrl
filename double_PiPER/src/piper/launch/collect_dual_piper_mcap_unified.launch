@@ -1,0 +1,115 @@
+<launch>
+  <arg name="enable_recording" default="true" />
+  <arg name="recorder_launch_prefix" default="xterm -T PiPER-Recorder -e" />
+  <arg name="dataset_root" default="$(env HOME)/piper_dataset/dual" />
+  <arg name="repo_id" default="local/piper_dual_state" />
+  <arg name="task" default="bimanual demonstration" />
+  <arg name="record_fps" default="20" />
+  <arg name="sync_tolerance" default="0.03" />
+  <arg name="sync_wait" default="0.025" />
+  <arg name="max_data_gap" default="1.0" />
+  <arg name="enable_cameras" default="true" />
+  <arg name="preview" default="true" />
+  <arg name="front_camera" default="/dev/video4" />
+  <arg name="wrist1_camera" default="/dev/video2" />
+  <arg name="wrist2_camera" default="/dev/video0" />
+  <arg name="front_width" default="1280" />
+  <arg name="front_height" default="720" />
+  <arg name="wrist1_width" default="640" />
+  <arg name="wrist1_height" default="480" />
+  <arg name="wrist2_width" default="640" />
+  <arg name="wrist2_height" default="480" />
+  <arg name="camera_fps" default="30" />
+  <arg name="camera_fourcc" default="MJPG" />
+  <arg name="camera_backend" default="v4l2" />
+  <arg name="camera_open_timeout" default="5.0" />
+  <arg name="camera_read_timeout" default="2.0" />
+  <arg name="sync_delay" default="0.2" />
+  <arg name="camera_target_tolerance" default="0.10" />
+  <arg name="camera_sync_tolerance" default="0.03" />
+  <arg name="camera_sync_wait" default="0.10" />
+  <arg name="max_image_age" default="0.5" />
+  <arg name="jpeg_quality" default="95" />
+  <arg name="can_follower_R_port" default="can1" />
+  <arg name="can_leader_R_port" default="can0" />
+  <arg name="can_follower_L_port" default="can3" />
+  <arg name="can_leader_L_port" default="can2" />
+  <arg name="auto_enable" default="true" />
+  <arg name="gripper_val_mutiple" default="1" />
+  <arg name="video_R_port" default="0" />
+  <arg name="video_L_port" default="2" />
+  <group ns="leaderR">
+    <node name="ctrl" pkg="piper" type="control_piper_unified.py" output="screen" args="dual leader">
+      <param name="can_port" value="$(arg can_leader_R_port)" />
+      <param name="auto_enable" value="$(arg auto_enable)" />
+      <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
+      <param name="gripper_exist" value="true" />
+      <remap from="joint_ctrl_single" to="joint_grip_pose" />
+    </node>
+  </group>
+  <group ns="followerR">
+    <node name="ctrl" pkg="piper" type="control_piper_unified.py" output="screen" args="dual follower">
+      <param name="can_port" value="$(arg can_follower_R_port)" />
+      <param name="auto_enable" value="$(arg auto_enable)" />
+      <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
+      <param name="gripper_exist" value="true" />
+      <remap from="joint_ctrl_single" to="/leaderR/joint_grip_pose" />
+      <remap from="/end_pose_euler" to="/leaderR/end_pose_euler" />
+    </node>
+  </group>
+  <group ns="leaderL">
+    <node name="ctrl" pkg="piper" type="control_piper_unified.py" output="screen" args="dual leader">
+      <param name="can_port" value="$(arg can_leader_L_port)" />
+      <param name="auto_enable" value="$(arg auto_enable)" />
+      <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
+      <param name="gripper_exist" value="true" />
+      <remap from="joint_ctrl_single" to="joint_grip_pose" />
+    </node>
+  </group>
+  <group ns="followerL">
+    <node name="ctrl" pkg="piper" type="control_piper_unified.py" output="screen" args="dual follower">
+      <param name="can_port" value="$(arg can_follower_L_port)" />
+      <param name="auto_enable" value="$(arg auto_enable)" />
+      <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
+      <param name="gripper_exist" value="true" />
+      <remap from="joint_ctrl_single" to="/leaderL/joint_grip_pose" />
+      <remap from="/end_pose_euler" to="/leaderL/end_pose_euler" />
+    </node>
+  </group>
+  <node if="$(arg enable_recording)" name="dual_state_mcap_recorder" pkg="piper" type="record_piper_mcap_unified.py" output="screen" required="false" launch-prefix="$(arg recorder_launch_prefix)">
+    <param name="dataset_root" value="$(arg dataset_root)" />
+    <param name="repo_id" value="$(arg repo_id)" />
+    <param name="task" value="$(arg task)" />
+    <param name="fps" value="$(arg record_fps)" />
+    <param name="sync_tolerance" value="$(arg sync_tolerance)" />
+    <param name="sync_wait" value="$(arg sync_wait)" />
+    <param name="max_data_gap" value="$(arg max_data_gap)" />
+    <param name="enable_cameras" value="$(arg enable_cameras)" />
+    <param name="preview" value="$(arg preview)" />
+    <param name="front_camera" value="$(arg front_camera)" />
+    <param name="wrist1_camera" value="$(arg wrist1_camera)" />
+    <param name="wrist2_camera" value="$(arg wrist2_camera)" />
+    <param name="front_width" value="$(arg front_width)" />
+    <param name="front_height" value="$(arg front_height)" />
+    <param name="wrist1_width" value="$(arg wrist1_width)" />
+    <param name="wrist1_height" value="$(arg wrist1_height)" />
+    <param name="wrist2_width" value="$(arg wrist2_width)" />
+    <param name="wrist2_height" value="$(arg wrist2_height)" />
+    <param name="camera_fps" value="$(arg camera_fps)" />
+    <param name="camera_fourcc" value="$(arg camera_fourcc)" />
+    <param name="camera_backend" value="$(arg camera_backend)" />
+    <param name="camera_open_timeout" value="$(arg camera_open_timeout)" />
+    <param name="camera_read_timeout" value="$(arg camera_read_timeout)" />
+    <param name="sync_delay" value="$(arg sync_delay)" />
+    <param name="camera_target_tolerance" value="$(arg camera_target_tolerance)" />
+    <param name="camera_sync_tolerance" value="$(arg camera_sync_tolerance)" />
+    <param name="camera_sync_wait" value="$(arg camera_sync_wait)" />
+    <param name="max_image_age" value="$(arg max_image_age)" />
+    <param name="jpeg_quality" value="$(arg jpeg_quality)" />
+    <param name="right_state_topic" value="/followerR/current_joint_obs" />
+    <param name="right_action_topic" value="/followerR/applied_joint_cmd" />
+    <param name="left_state_topic" value="/followerL/current_joint_obs" />
+    <param name="left_action_topic" value="/followerL/applied_joint_cmd" />
+    <param name="configuration" value="dual" />
+  </node>
+</launch>

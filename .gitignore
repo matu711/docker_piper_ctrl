@@ -42,8 +42,7 @@ venv/
 # =========================
 *.bag
 *.mcap
-piper_dataset/*
-!piper_dataset/.gitkeep
+/piper_dataset/
 /dataset_old/
 
 # =========================
@@ -67,6 +66,8 @@ piper_dataset/*
 /checkpoints/
 /runs/
 /wandb/
+/reports/
+**/.piper-generated-backup.*/
 *.pt
 *.pth
 *.ckpt

@@ -4,10 +4,78 @@ import math
 import multiprocessing
 import os
 import signal
+import sys
 import threading
 import time
 
 import cv2
+
+
+def camera_diagnostic(message):
+    # The spawned capture process has no ROS node. Flush to roslaunch's
+    # captured stderr, including a read-start marker if a native read hangs.
+    try:
+        print("[mcap2_camera] "+message, file=sys.stderr, flush=True)
+    except OSError:
+        # A closed diagnostic stream must not become a camera/control fault.
+        pass
+
+
+class CaptureDiagnostics:
+    """Log the first three batches, then rate-limit anomalies per camera."""
+    def __init__(self, timeout):
+        self.timeout = timeout
+        self.last_log = {}
+        self.previous = {}
+
+    def emit(self, name, message, startup=False):
+        now = time.monotonic()
+        key = (name, message.split()[0])
+        if startup or now-self.last_log.get(key, float("-inf")) >= 2.:
+            camera_diagnostic(message)
+            self.last_log[key] = now
+
+    def read(self, cap, name, device, sequence, attempt):
+        startup = sequence < 3
+        before_ros, before_mono = time.time(), time.monotonic()
+        if startup:
+            self.emit(name, "read_start camera=%s device=%s sequence=%d attempt=%d "
+                      "unix=%.6f mono=%.6f" %
+                      (name, device, sequence, attempt, before_ros, before_mono), startup=True)
+            # Keep diagnostic output time outside the read measurement and
+            # timestamp fallback. read_end carries these exact read bounds.
+            before_ros, before_mono = time.time(), time.monotonic()
+        try:
+            ok, frame = cap.read()
+        except Exception as exc:
+            after_mono, after_ros = time.monotonic(), time.time()
+            self.emit(name, "read_exception camera=%s device=%s sequence=%d attempt=%d "
+                      "start_unix=%.6f end_unix=%.6f start_mono=%.6f end_mono=%.6f "
+                      "duration=%.6fs error=%s" %
+                      (name, device, sequence, attempt, before_ros, after_ros,
+                       before_mono, after_mono, after_mono-before_mono, exc), startup)
+            raise
+        after_mono, after_ros = time.monotonic(), time.time()
+        success = bool(ok and frame is not None)
+        if startup or not success or after_mono-before_mono > self.timeout:
+            self.emit(name, "read_end camera=%s device=%s sequence=%d attempt=%d "
+                      "start_unix=%.6f end_unix=%.6f start_mono=%.6f end_mono=%.6f "
+                      "duration=%.6fs success=%s first_frame=%s" %
+                      (name, device, sequence, attempt, before_ros, after_ros, before_mono,
+                       after_mono, after_mono-before_mono, success, sequence == 0), startup)
+        return ok, frame, before_ros, before_mono, after_ros, after_mono
+
+    def frame(self, name, device, sequence, stamp, mono, source, read_end):
+        previous = self.previous.get(name)
+        interval = read_end-previous[0] if previous else None
+        changed = previous is not None and source != previous[1]
+        if sequence < 3 or changed or (interval is not None and interval > self.timeout):
+            self.emit(name, "frame camera=%s device=%s sequence=%d first_frame=%s "
+                      "stamp_unix=%.6f stamp_mono=%.6f source=%s "
+                      "age_at_read_end=%.6fs update_interval=%s" %
+                      (name, device, sequence, sequence == 0, stamp, mono, source,
+                       read_end-mono, "none" if interval is None else "%.6fs" % interval), sequence < 3)
+        self.previous[name] = (read_end, source)
 
 
 def frame_time(cap, before_ros, before_mono, after_ros, after_mono, age_limit):
@@ -63,6 +131,7 @@ def _camera_worker(devices, config, stop, connection):
     os.environ["OPENCV_VIDEOIO_V4L_SELECT_TIMEOUT"] = "10"
     cv2.setNumThreads(1)
     cameras = []
+    diagnostics = CaptureDiagnostics(config["read_timeout"])
     try:
         settings = {}
         for name, device in devices:
@@ -77,8 +146,8 @@ def _camera_worker(devices, config, stop, connection):
             for index, (name, device, cap) in enumerate(cameras):
                 if stop.is_set():
                     return
-                before_ros, before_mono = time.time(), time.monotonic()
-                ok, frame = cap.read()
+                ok, frame, before_ros, before_mono, after_ros, after_mono = diagnostics.read(
+                    cap, name, device, sequence, 0)
                 # Some UVC devices produce no first frame on initial stream-on.
                 # Retry on the owner process; never race release() against read().
                 if sequence == 0:
@@ -99,9 +168,8 @@ def _camera_worker(devices, config, stop, connection):
                             cameras[index] = (name, device, cap)
                             settings[name]["startup_reopens"] = failures//2
                         stop.wait(.1)
-                        before_ros, before_mono = time.time(), time.monotonic()
-                        ok, frame = cap.read()
-                after_mono, after_ros = time.monotonic(), time.time()
+                        ok, frame, before_ros, before_mono, after_ros, after_mono = diagnostics.read(
+                            cap, name, device, sequence, failures)
                 if stop.is_set():
                     return
                 if not ok or frame is None:
@@ -109,6 +177,7 @@ def _camera_worker(devices, config, stop, connection):
                 stamp, mono, source = frame_time(cap, before_ros, before_mono, after_ros, after_mono,
                                                  config["read_timeout"])
                 settings[name]["timestamp_source"] = source
+                diagnostics.frame(name, device, sequence, stamp, mono, source, after_mono)
                 if frame.shape[1] != config["width"] or frame.shape[0] != config["height"]:
                     frame = cv2.resize(frame, (config["width"], config["height"]))
                 batch[name] = (sequence, frame, stamp, mono)
@@ -215,6 +284,14 @@ class CameraCapture:
                     raise RuntimeError("Timed out waiting for the first three camera frames")
                 self.condition.wait(min(.1, remaining))
             self.check()
+
+            now = time.monotonic()
+            for name, frames in self.frames.items():
+                latest = frames[-1]
+                camera_diagnostic("wait_ready camera=%s sequence=%d age=%.6fs threshold=%.6fs "
+                                  "stamp_unix=%.6f stamp_mono=%.6f source=%s" %
+                                  (name, latest[0], now-latest[3], self.config["read_timeout"],
+                                   latest[2], latest[3], self.settings.get(name, {}).get("timestamp_source", "unknown")))
 
     def close(self):
         if self.closed:

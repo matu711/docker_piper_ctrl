@@ -3,6 +3,7 @@
 import importlib
 import math
 import tempfile
+import threading
 from types import SimpleNamespace
 from pathlib import Path
 import sys
@@ -50,11 +51,11 @@ class LeaderFollowerTests(unittest.TestCase):
         self.assertEqual(message.position, [0., .5, -.5, 0., .5, 0., .04])
         arm.move_j.assert_not_called()
 
-    def test_single_follower_only_clamps_gripper_and_uses_sdk_j6_limit(self):
+    def test_single_follower_has_no_fixed_joint_limits(self):
         node, arm = self.driver("piper_ctrl_follower_node", "PiperFollowerNode", "can0")
-        # A wider SDK limit proves there is no separate +/-120 degree clip.
+        # Following must not even consult the fixed pose limits.
         node.params = MagicMock()
-        node.params.GetJointLimitParam.return_value = (-3.5, 3.5)
+        node.params.GetJointLimitParam.side_effect = AssertionError('pose limits used for following')
         node.joint_callback(self.message([0., .5, -.5, 0., .5, 3., .2]))
         arm.move_j.assert_called_once()
         sent, speed = arm.move_j.call_args[0]
@@ -94,30 +95,21 @@ class LeaderFollowerTests(unittest.TestCase):
             for actual, target in zip(arm.move_j.call_args[0][0], expected):
                 self.assertAlmostEqual(actual, target, delta=1e-5)
 
-    def test_single_and_dual_validators_agree_on_all_joint_boundaries(self):
-        from piper_mcap2_arm import ArmDriver
+    def test_saved_pose_validator_checks_all_joint_boundaries(self):
         node, _ = self.driver("piper_ctrl_follower_node", "PiperFollowerNode", "can0")
-        # Pure validator only: never construct the dual driver or an SDK arm.
-        dual = ArmDriver.__new__(ArmDriver)
-        dual.params, dual.zero_angle_tolerance = node.params, node.zero_angle_tolerance
         for index in range(6):
             lower, upper = node.params.GetJointLimitParam("j%d" % (index + 1))
-            if index == 1 and lower == 0:
-                lower -= .05
-            if index == 2 and upper == 0:
-                upper += .05
-            for value, accepted in ((lower, True), (upper, True),
-                                    (lower - 1e-7, False), (upper + 1e-7, False)):
-                with self.subTest(joint=index + 1, value=value):
-                    joints = [0.] * 6
-                    joints[index] = value
-                    payload = {"joint_positions": joints, "gripper": .01}
+            if index == 1 and lower == 0: lower -= .05
+            if index == 2 and upper == 0: upper += .05
+            for value, accepted in ((lower, True), (upper, True), (lower-1e-7, False), (upper+1e-7, False)):
+                joints = [0.] * 6
+                joints[index] = value
+                payload = {"joint_positions": joints, "gripper": .01}
+                with self.subTest(joint=index+1, value=value):
                     if accepted:
-                        self.assertEqual(node._validate_initial_pose(payload), dual._validate_initial_pose(payload))
+                        self.assertEqual(node._validate_initial_pose(payload), (joints,.01))
                     else:
-                        for driver in (node, dual):
-                            with self.assertRaises(ValueError):
-                                driver._validate_initial_pose(payload)
+                        with self.assertRaises(ValueError): node._validate_initial_pose(payload)
 
     def test_zero_allowance_only_expands_sdk_boundaries_at_zero(self):
         node, _ = self.driver("piper_ctrl_follower_node", "PiperFollowerNode", "can0")
@@ -130,40 +122,15 @@ class LeaderFollowerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             node._validate_initial_pose(target)
 
-    def test_single_and_dual_dispatch_agree_after_sdk_rounding(self):
-        from piper_mcap2_arm import ArmDriver
-        dual_module = sys.modules['piper_mcap2_arm']
-        node, arm = self.driver("piper_ctrl_follower_node", "PiperFollowerNode", "can0")
-        dual = ArmDriver.__new__(ArmDriver)
-        dual.params, dual.zero_angle_tolerance = node.params, node.zero_angle_tolerance
-        dual.fault, dual.enabled = None, True
-        dual.piper, dual.applied_cmd_pub = MagicMock(), MagicMock()
-        dual.sample = MagicMock()
-        cases = [[0., -.036408, .034662, 0., .319011, 0.]]
-        for index in range(6):
-            lower, upper = node.params.GetJointLimitParam('j%d' % (index + 1))
-            if index == 1 and lower == 0:
-                lower -= .05
-            if index == 2 and upper == 0:
-                upper += .05
-            for value in (lower, upper, lower - 1e-7, upper + 1e-7):
-                target = [0.] * 6
-                target[index] = value
-                cases.append(target)
-        with patch.object(dual_module, 'rospy', sys.modules['piper_ctrl_follower_node'].rospy):
-            for target in cases:
-                with self.subTest(target=target):
-                    results = []
-                    for driver, sdk in ((node, arm), (dual, dual.piper)):
-                        sdk.move_j.reset_mock()
-                        try:
-                            driver._dispatch_joint_command(target, .01, 40)
-                        except ValueError:
-                            sdk.move_j.assert_not_called()
-                            results.append(None)
-                        else:
-                            results.append(sdk.move_j.call_args)
-                    self.assertEqual(results[0], results[1])
+    def test_saved_pose_dispatch_matches_shared_sdk_rounding(self):
+        from piper_command_validation import prepare_sdk_command
+        node, sdk = self.driver("piper_ctrl_follower_node", "PiperFollowerNode", "can0")
+        for target in ([0.,-.036408,.034662,0.,.319011,0.], [0.,.5,-.5,0.,.5,0.]):
+            expected, grip = prepare_sdk_command(target,.01,node._validate_initial_pose)
+            sdk.move_j.reset_mock()
+            node._dispatch_joint_command(target,.01,40)
+            sdk.move_j.assert_called_once_with(expected,40)
+            sdk.move_gripper.assert_called_with(grip,1)
 
     def test_bad_commands_stop_and_latch_without_sending_motion(self):
         commands = [[0.] * size for size in (0, 6, 8)]
@@ -172,8 +139,8 @@ class LeaderFollowerTests(unittest.TestCase):
                 values = [0.] * 7
                 values[index] = bad
                 commands.append(values)
-        # Include a nonnumeric value and a finite out-of-range J6.
-        commands += [[0.] * 6 + ['bad'], [0.] * 5 + [100., .01]]
+        # Old mechanical-range excursions are allowed; SDK integer overflow is not.
+        commands += [[0.] * 6 + ['bad'], [0.] * 5 + [1e308, .01]]
         for values in commands:
             with self.subTest(values=values):
                 node, arm = self.driver("piper_ctrl_follower_node", "PiperFollowerNode", "can0")
@@ -190,14 +157,37 @@ class LeaderFollowerTests(unittest.TestCase):
                 node.applied_cmd_pub.publish.assert_not_called()
                 arm.init.return_value.EmergencyStop.assert_called_once_with(1)
 
-    def test_rounding_cannot_send_a_target_outside_joint_limits(self):
+    def test_following_clips_zero_boundary_before_rounding(self):
         node, arm = self.driver("piper_ctrl_follower_node", "PiperFollowerNode", "can0")
-        # -0.05 rad becomes slightly more negative at SDK 0.001 degree resolution.
+        # A negative J2 must reach zero before SDK 0.001 degree rounding.
         node.params = MagicMock()
         node.params.GetJointLimitParam.side_effect = lambda key: (0., 3.) if key == 'j2' else (-3., 3.)
         node.joint_callback(self.message([0., -.05, 0., 0., 0., 0., .01]))
-        arm.move_j.assert_not_called()
-        self.assertTrue(node.command_fault)
+        self.assertEqual(arm.move_j.call_args.args[0][1], 0.)
+        self.assertIsNone(node.command_fault)
+
+    def test_follow_callback_records_quantized_commands_without_mutating_leader(self):
+        from piper_command_validation import prepare_follow_command
+        node, sdk = self.driver('piper_ctrl_follower_node', 'PiperFollowerNode', 'can0')
+        node._validate_initial_pose = MagicMock(side_effect=AssertionError('strict pose path used'))
+        for j2,j3 in ((-.01,.01),(.01,-.01),(4.,-4.)):
+            for grip in (-.005,.05,.105,.01234567):
+                values=[3.,j2,j3,1.745001,1.5,3.,grip]
+                message=self.message(values.copy())
+                joints, gripper=prepare_follow_command(values)
+                sdk.move_j.reset_mock()
+                node.joint_callback(message)
+                sdk.move_j.assert_called_once_with(joints,40)
+                sdk.move_gripper.assert_called_with(gripper,1)
+                self.assertEqual(list(node.applied_cmd_pub.publish.call_args.args[0].position),joints+[gripper])
+                self.assertEqual(list(message.position),values)
+
+    def test_saved_pose_dispatch_still_rejects_j4_limit(self):
+        node, sdk=self.driver('piper_ctrl_follower_node','PiperFollowerNode','can0')
+        with self.assertRaises(ValueError):
+            node._dispatch_joint_command([0.,0.,0.,1.745001,0.,0.],.05,20)
+        sdk.move_j.assert_not_called()
+        sdk.move_gripper.assert_not_called()
 
     def test_gripper_clip_preserves_both_bounds(self):
         node, arm = self.driver("piper_ctrl_follower_node", "PiperFollowerNode", "can0")
