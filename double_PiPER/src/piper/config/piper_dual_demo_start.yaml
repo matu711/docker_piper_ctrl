@@ -2,22 +2,39 @@
 # Source: piper_dataset/dnp1_20261015/20261015_153856/frames.csv, frame_index=0.
 # This recorded starting pose is not evidence of a collision-free return path.
 # Units: joints rad; gripper total opening m. No sign mirroring or clipping.
+# targets:
+#   left:
+#     joint1: -0.48916301131248474
+#     joint2: 1.237159013748169
+#     joint3: -1.477403998374939
+#     joint4: -0.4351629912853241
+#     joint5: 0.6707469820976257
+#     joint6: 0.44823500514030457
+#     gripper: 0.05249999836087227
+#   right:
+#     joint1: 0.5193930268287659
+#     joint2: 1.104112982749939
+#     joint3: -1.5012099742889404
+#     joint4: 0.17336399853229523
+#     joint5: 0.825452983379364
+#     joint6: -0.24684199690818787
+#     gripper: 9.999999747378752e-05
 targets:
   left:
-    joint1: -0.48916301131248474
-    joint2: 1.237159013748169
-    joint3: -1.477403998374939
-    joint4: -0.4351629912853241
-    joint5: 0.6707469820976257
-    joint6: 0.44823500514030457
-    gripper: 0.05249999836087227
+    joint1: -0.7100870013237
+    joint2: 1.1908210515975952
+    joint3: -1.404641032218933
+    joint4: -0.015515999868512154
+    joint5: 0.9002230167388916
+    joint6: -0.06723000109195709
+    gripper: 0.0
   right:
-    joint1: 0.5193930268287659
-    joint2: 1.104112982749939
-    joint3: -1.5012099742889404
-    joint4: 0.17336399853229523
-    joint5: 0.825452983379364
-    joint6: -0.24684199690818787
+    joint1: 0.8072850108146667
+    joint2: 1.1835249662399292
+    joint3: -1.4407169818878174
+    joint4: -0.08709199726581573
+    joint5: 0.8701859712600708
+    joint6: 0.0
     gripper: 9.999999747378752e-05
 # Same defaults as single-arm piper_demo_start.yaml.
 move_duration: 3.0
