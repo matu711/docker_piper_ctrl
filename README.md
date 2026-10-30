@@ -10,7 +10,7 @@
 | `project_minimal` | 収集データのMCAP→LeRobot変換、学習、Checkpointパッケージ出力 |
 | `piper_vla_runtime_2` | 学習済みPolicyのロード、WebSocket推論、ROS観測の取得とAction選択 |
 
-正式な収集方式は共通Recorderを使うUnified方式です。現在のファイル名は **`collect_single_piper_mcap.launch` / `collect_dual_piper_mcap.launch`** です。ファイル名に`_unified`は付きません。VLAは`start_vla_piper.launch` / `start_vla_dual_piper.launch`を使い、収集launchと同時に同じCAN・カメラを使用しません。
+単腕・双腕の教示データ収集には共通Recorderを使います。現在のファイル名は **`collect_single_piper_mcap.launch` / `collect_dual_piper_mcap.launch`** です。VLAは`start_vla_piper.launch` / `start_vla_dual_piper.launch`を使い、収集launchと同時に同じCAN・カメラを使用しません。
 
 以下で「ホスト」はDockerを実行するOS、「PiPERコンテナ」は`piper-control-dev`、「Runtimeコンテナ」は推論リポジトリが起動するROSクライアントを指します。制御PCと推論PCを分ける場合の通信設定は11章に示します。コードブロックの環境変数は、そのコマンドを実行する端末内で設定してください。
 
@@ -94,34 +94,34 @@ rospack find piper
 ```bash
 lsusb
 ip -br link show type can
-cd "$HOME/docker_piper_ctrl/double_PiPER"
-bash find_all_can_port.sh
+sudo ethtool -i can0 | grep bus
 ```
 
-`find_all_can_port.sh`は各CANの`ethtool -i`からUSB bus-infoを表示します。個別には次で確認します。
+表示された`bus-info:`の値がUSBポート番号です。例えば`bus-info: 3-11:1.0`なら、次の有効化コマンドへ`3-11:1.0`を指定します。他のCANも調べる場合は`can0`を`can1`、`can2`、`can3`など実際のインターフェース名へ置き換えます。
 
-```bash
-read -r -p '調べるCANインターフェース名: ' CAN_IF
-sudo ethtool -i "${CAN_IF:?}"
-ip -details -statistics link show "${CAN_IF:?}"
-```
-
-USBポート・ケーブル・アームのラベルを照合し、Leader/Follower、左/右とbus-infoの対応を記録します。`can0`等の列挙順やUSB bus-infoはPC・接続口によって変わり、番号だけではアームを特定できません。
+USBポート・ケーブル・アームのラベルを照合し、Leader/Follower、左/右とUSBポート番号の対応を記録します。CAN名やUSBポート番号はPC・接続口によって変わるため、実際の表示を確認してください。
 
 ### 3.2 1 Mbpsで有効化
 
-以下はCANインターフェース設定を変更するコマンドです。ロボットの安全状態を確認し、対象を一台ずつ特定して実行します。
+ロボットの安全状態を確認し、対象を一台ずつ特定して実行します。
 
-**ホスト・`double_PiPER`内：**
+**ホスト：**
 
 ```bash
-read -r -p 'このアームに割り当てるCAN名: ' CAN_NAME
-read -r -p '確認したUSB bus-info: ' CAN_BUS_INFO
-bash can_activate.sh "${CAN_NAME:?}" 1000000 "${CAN_BUS_INFO:?}"
-ip -details -statistics link show "${CAN_NAME:?}"
+cd "$HOME/docker_piper_ctrl/double_PiPER"
+bash can_activate.sh can0 1000000 "USBポート番号"
+ip -details -statistics link show can0
 ```
 
-単腕はLeader/Followerの2台、双腕は右Leader/右Follower/左Leader/左Followerの4台で繰り返します。既存インターフェース名と衝突するrenameを避けてください。複数接続時はbus-infoを省略しません。`UP`、`bitrate 1000000`、エラーカウンターを確認します。インターフェースがなければUSB接続、ホストの対応ドライバー、電源を先に確認します。
+`"USBポート番号"`は3.1節で確認した`bus-info:`の値へ置き換えます。例えば`3-11:1.0`だった場合は次のように指定します。
+
+```bash
+bash can_activate.sh can0 1000000 "3-11:1.0"
+```
+
+`can0`は割り当てたいCAN名です。単腕はLeader/Followerの2台、双腕は右Leader/右Follower/左Leader/左Followerの4台について、CAN名とUSBポート番号を変更して繰り返します。既存インターフェース名と衝突するrenameを避け、複数接続時はUSBポート番号を省略しません。
+
+有効化後は`UP`、`bitrate 1000000`、エラーカウンターを確認します。インターフェースがなければUSB接続、ホストの対応ドライバー、電源を先に確認します。
 
 CAN名はlaunch引数で指定します。収集はLeaderも必要、VLAはFollowerのみを使用します。ホストnetworkを共有するPiPERコンテナでも同じCAN名を確認できます。
 
@@ -150,7 +150,7 @@ ls -l "${CAMERA_DEVICE:?}"
 
 **左右対応は映像で確認します。** ロボットを動かさず、手や目印を片方のカメラ前に置いて画像名と実物を照合します。収集の`wrist1/wrist2`という名前自体は左/右を保証しません。データセットに記録した対応を、学習変換と推論の`left_wrist/right_wrist`へ一貫して渡します。video番号から左右を推定して入れ替えないでください。
 
-## 5. 単腕Unified教示データ収集
+## 5. 単腕教示データ収集
 
 ### 5.1 起動
 
@@ -169,6 +169,17 @@ roslaunch piper collect_single_piper_mcap.launch \
   front_camera:="${CAM_FRONT:?}" \
   wrist_camera:="${CAM_WRIST:?}" \
   dataset_root:="$HOME/piper_dataset/single"
+```
+
+CAN名・カメラ番号を直接指定する場合の例です。Leaderが`can0`、Followerが`can1`、frontが`/dev/video4`、wristが`/dev/video0`の構成で使います。実際の接続が異なる場合は各引数を変更してください。
+
+```bash
+roslaunch piper collect_single_piper_mcap.launch \
+  can_leader_port:=can0 \
+  can_follower_port:=can1 \
+  front_camera:=/dev/video4 \
+  wrist_camera:=/dev/video0 \
+  dataset_root:=$HOME/piper_dataset/single
 ```
 
 Leaderを動かすとFollowerが追従する構成です。Recorderを操作して追従を開始する方式ではありません。ロボットの状態を確認した後、Recorderの映像と端末を使って記録します。
@@ -263,7 +274,7 @@ rosservice call /follower/resume_leader_control "{}"
 
 これらは`std_srvs/Trigger`です。`/follower/set_leader_control_block`は`std_srvs/SetBool`で、新しいLeader指令の遮断に使います。command faultが立っている場合は単純なresumeで解除できません。安全確認・原因解消を優先します。
 
-## 6. 双腕Unified教示データ収集
+## 6. 双腕教示データ収集
 
 ### 6.1 起動と対応付け
 
@@ -286,6 +297,20 @@ roslaunch piper collect_dual_piper_mcap.launch \
   wrist1_camera:="${CAM_WRIST1:?}" \
   wrist2_camera:="${CAM_WRIST2:?}" \
   dataset_root:="$HOME/piper_dataset/dual"
+```
+
+CAN名・カメラ番号を直接指定する場合の例です。右Leader/Followerが`can0`/`can1`、左Leader/Followerが`can2`/`can3`、frontが`/dev/video4`、wrist1が`/dev/video2`、wrist2が`/dev/video0`の構成で使います。実際の接続が異なる場合は各引数を変更してください。
+
+```bash
+roslaunch piper collect_dual_piper_mcap.launch \
+  can_leader_R_port:=can0 \
+  can_follower_R_port:=can1 \
+  can_leader_L_port:=can2 \
+  can_follower_L_port:=can3 \
+  front_camera:=/dev/video4 \
+  wrist1_camera:=/dev/video2 \
+  wrist2_camera:=/dev/video0 \
+  dataset_root:=$HOME/piper_dataset/dual
 ```
 
 4アームの初期化後、それぞれのLeaderとFollowerが対応して動きます。双腕FollowerはLeader EE受信を待って追従します。操作・保存・終了は5.2節と共通です。左右やカメラの対応をtaskだけで表現せず、機体ラベル・データ管理情報として残してください。
