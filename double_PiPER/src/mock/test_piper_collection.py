@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unified single/dual contract tests. All ROS endpoints and cameras are fake."""
+"""Single/dual contract tests. All ROS endpoints and cameras are fake."""
 import ast
 import csv
 import hashlib
@@ -14,16 +14,16 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import PoseStamped
 from mcap.reader import make_reader
-from test_unified_reference import FakeCapture, message
+from test_piper_collection_reference import FakeCapture, message
 
 BASE = Path(__file__).resolve().parents[1]/'piper'
 sys.path.insert(0, str(BASE/'scripts'))
-import unified_piper_recorder as recording
-import unified_piper_storage as storage
-import unified_piper_single as single_adapter
+import piper_recorder as recording
+import piper_storage as storage
+import piper_single as single_adapter
 import piper_recording_common as legacy
-from unified_piper_config import configuration
-from unified_piper_gui import detail_lines
+from piper_config import configuration
+from piper_gui import detail_lines
 
 
 class SingleTests(unittest.TestCase):
@@ -202,21 +202,21 @@ class StateOnlySingleTests(unittest.TestCase):
 class StructureTests(unittest.TestCase):
     def test_launch_switches_ports_cameras_and_same_entrypoints(self):
         for mode, count, ports in [('dual',4,['can0','can1','can2','can3']), ('single',2,['can1','can0'])]:
-            root = ET.parse(BASE/'launch'/('collect_'+mode+'_piper_mcap_unified.launch')).getroot()
+            root = ET.parse(BASE/'launch'/('collect_'+mode+'_piper_mcap.launch')).getroot()
             args = {a.get('name'): a.get('default') for a in root.findall('arg')}
             nodes = root.findall('group/node')
             self.assertEqual(len(nodes), count)
-            self.assertTrue(all(n.get('type') == 'control_piper_unified.py' for n in nodes))
+            self.assertTrue(all(n.get('type') == 'control_piper.py' for n in nodes))
             self.assertEqual([args[n.find("param[@name='can_port']").get('value')[6:-1]] for n in nodes], ports)
             recorder = root.find('node')
-            self.assertEqual(recorder.get('type'), 'record_piper_mcap_unified.py')
+            self.assertEqual(recorder.get('type'), 'record_piper_mcap.py')
             self.assertEqual(args['recorder_launch_prefix'], 'xterm -T PiPER-Recorder -e')
             self.assertEqual(recorder.find("param[@name='configuration']").get('value'), mode)
             for node in nodes+[recorder]:
                 self.assertTrue((BASE/'scripts'/node.get('type')).stat().st_mode & 0o111)
 
     def test_no_managed_control_or_robot_service_proxy_in_recorder(self):
-        tree = ast.parse((BASE/'scripts/unified_piper_recorder.py').read_text())
+        tree = ast.parse((BASE/'scripts/piper_recorder.py').read_text())
         calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call)]
         self.assertFalse(any(isinstance(n.func, ast.Attribute) and n.func.attr in ('ServiceProxy','wait_for_service','Piper') for n in calls))
         imports = [n.module for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)]

@@ -21,24 +21,24 @@ class Configuration:
         if self.name == "single":
             from piper_recording_common import make_names
             return make_names(7)
-        from unified_piper_storage import NAMES
+        from piper_storage import NAMES
         return list(NAMES)
 
     def configure_metadata(self, metadata):
         if self.name == "single":
-            from unified_piper_single import configure_metadata
+            from piper_single import configure_metadata
             configure_metadata(metadata)
 
     def add_sources(self, recorder):
         if self.name == "single":
-            from unified_piper_single import add_sources
+            from piper_single import add_sources
             add_sources(recorder)
 
     def episode(self, root, metadata, anchor):
         if self.name == "single" and metadata.get("cameras"):
-            from unified_piper_single import SingleEpisode
+            from piper_single import SingleEpisode
             return SingleEpisode(root, metadata, anchor)
-        from unified_piper_storage import Episode
+        from piper_storage import Episode
         return Episode(root, metadata, anchor)
 
 

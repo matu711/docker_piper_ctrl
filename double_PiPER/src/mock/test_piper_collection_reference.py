@@ -21,10 +21,10 @@ from mcap.reader import make_reader
 
 BASE = Path(__file__).resolve().parents[1]/"piper"
 sys.path.insert(0, str(BASE/"scripts"))
-import unified_piper_recorder as recording
-import unified_piper_storage as storage
+import piper_recorder as recording
+import piper_storage as storage
 import piper_recording_common as single
-import unified_piper_follower as follower
+import piper_follower as follower
 
 
 def message(stamp, values):
@@ -88,7 +88,7 @@ class FollowerTests(unittest.TestCase):
 
     def test_reference_control_source_identical_except_whitespace(self):
         import hashlib
-        self.assertEqual(hashlib.sha256((BASE/"scripts/unified_piper_follower.py").read_bytes()).hexdigest(),
+        self.assertEqual(hashlib.sha256((BASE/"scripts/piper_follower.py").read_bytes()).hexdigest(),
                          '755e32e87e385e102b3549233044ef0ae1840609cd96dcc41ed3d1ff0abb39e1')
 
 

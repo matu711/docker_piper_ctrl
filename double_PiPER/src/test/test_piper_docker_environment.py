@@ -27,7 +27,7 @@ sys.path.insert(0, str(SCRIPTS))
 class DockerEnvironmentTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.temporary = tempfile.TemporaryDirectory(prefix='piper-unified-env-')
+        cls.temporary = tempfile.TemporaryDirectory(prefix='piper-env-')
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.workspace = Path(cls.temporary.name)/'workspace'
         source = cls.workspace/'src'
@@ -77,7 +77,7 @@ class DockerEnvironmentTests(unittest.TestCase):
         self.assertEqual(len(list(self.workspace.glob('.piper-generated-backup.*'))), 1)
         self.assertEqual((self.workspace/'devel/_setup_util.py').read_text().splitlines()[0], '#!/usr/bin/python3')
 
-    def test_system_python_imports_and_all_unified_files_without_hardware(self):
+    def test_system_python_imports_and_all_collection_files_without_hardware(self):
         self.assertEqual(sys.executable, '/usr/bin/python3')
         self.assertTrue(shutil.which('xterm'))
         self.assertIn('utf', locale.getpreferredencoding(False).lower())
@@ -93,9 +93,9 @@ class DockerEnvironmentTests(unittest.TestCase):
         from piper_vla_runtime_msgs.srv import StartInference
         with patch.object(piper_sdk, 'Piper', side_effect=AssertionError('No SDK instance allowed')), \
              patch.object(cv2, 'VideoCapture', side_effect=AssertionError('No camera allowed')):
-            for name in ('control_piper_unified','record_piper_mcap_unified','piper_recording_common','unified_piper_recorder',
-                         'unified_piper_config','unified_piper_storage','unified_piper_single',
-                         'unified_piper_gui','unified_piper_follower',
+            for name in ('control_piper','record_piper_mcap','piper_recording_common','piper_recorder',
+                         'piper_config','piper_storage','piper_single',
+                         'piper_gui','piper_follower',
                          'piper_ctrl_leader_node_new','piper_ctrl_follower_node',
                          'vla_piper_controller','vla_dual_piper_controller',
                          'piper_ctrl_dual_feedback_node','vla_dual_camera_publisher',
@@ -126,7 +126,7 @@ PROBE'''
     def test_japanese_task_renders_with_pillow_and_cjk_font(self):
         import numpy as np
         from PIL import ImageFont
-        import unified_piper_gui as gui
+        import piper_gui as gui
         font = ImageFont.truetype('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',18)
         self.assertIsNotNone(font.getmask('袋を持つ').getbbox())
         recorder = SimpleNamespace(episode=None, current_task='袋を持つ', fps=20,
@@ -143,7 +143,7 @@ PROBE'''
         import cv2
         import numpy as np
         try:
-            cv2.imshow('PiPER Unified offline preview test', np.zeros((270,960,3), dtype=np.uint8))
+            cv2.imshow('PiPER MCAP offline preview test', np.zeros((270,960,3), dtype=np.uint8))
             cv2.waitKey(100)
         finally:
             cv2.destroyAllWindows()
@@ -152,7 +152,7 @@ PROBE'''
     def test_authenticated_xterm_runs_recorder_entrypoint_with_tty(self):
         marker = self.workspace.parent/'xterm-result.json'
         environment = dict(os.environ, PYTHONPATH=str(self.generated)+os.pathsep+os.environ.get('PYTHONPATH',''))
-        result = subprocess.run(['xterm','-T','PiPER Unified offline test','-e',sys.executable,
+        result = subprocess.run(['xterm','-T','PiPER MCAP offline test','-e',sys.executable,
                                  str(Path(__file__).resolve()),'--xterm-child',str(marker)],
                                 env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 text=True, timeout=20)
@@ -166,14 +166,14 @@ PROBE'''
 def xterm_child(marker):
     # Execute the actual thin entrypoint, replacing only its main callback.
     # No ROS node, camera worker, CAN socket or SDK instance is created.
-    import unified_piper_recorder as recorder
+    import piper_recorder as recorder
     def probe():
         Path(marker).write_text(json.dumps(dict(tty=os.isatty(0),
             encoding=sys.stdin.encoding, task='袋を持つ'), ensure_ascii=False))
         print('PiPER UTF-8: 袋を持つ — offline test complete', flush=True)
         time.sleep(.5)
     with patch.object(recorder, 'main', probe):
-        runpy.run_path(str(SCRIPTS/'record_piper_mcap_unified.py'), run_name='__main__')
+        runpy.run_path(str(SCRIPTS/'record_piper_mcap.py'), run_name='__main__')
 
 
 if __name__ == '__main__':

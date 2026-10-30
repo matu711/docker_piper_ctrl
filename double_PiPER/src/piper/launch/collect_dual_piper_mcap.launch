@@ -39,7 +39,7 @@
   <arg name="video_R_port" default="0" />
   <arg name="video_L_port" default="2" />
   <group ns="leaderR">
-    <node name="ctrl" pkg="piper" type="control_piper_unified.py" output="screen" args="dual leader">
+    <node name="ctrl" pkg="piper" type="control_piper.py" output="screen" args="dual leader">
       <param name="can_port" value="$(arg can_leader_R_port)" />
       <param name="auto_enable" value="$(arg auto_enable)" />
       <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
@@ -48,7 +48,7 @@
     </node>
   </group>
   <group ns="followerR">
-    <node name="ctrl" pkg="piper" type="control_piper_unified.py" output="screen" args="dual follower">
+    <node name="ctrl" pkg="piper" type="control_piper.py" output="screen" args="dual follower">
       <param name="can_port" value="$(arg can_follower_R_port)" />
       <param name="auto_enable" value="$(arg auto_enable)" />
       <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
@@ -58,7 +58,7 @@
     </node>
   </group>
   <group ns="leaderL">
-    <node name="ctrl" pkg="piper" type="control_piper_unified.py" output="screen" args="dual leader">
+    <node name="ctrl" pkg="piper" type="control_piper.py" output="screen" args="dual leader">
       <param name="can_port" value="$(arg can_leader_L_port)" />
       <param name="auto_enable" value="$(arg auto_enable)" />
       <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
@@ -67,7 +67,7 @@
     </node>
   </group>
   <group ns="followerL">
-    <node name="ctrl" pkg="piper" type="control_piper_unified.py" output="screen" args="dual follower">
+    <node name="ctrl" pkg="piper" type="control_piper.py" output="screen" args="dual follower">
       <param name="can_port" value="$(arg can_follower_L_port)" />
       <param name="auto_enable" value="$(arg auto_enable)" />
       <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
@@ -76,7 +76,7 @@
       <remap from="/end_pose_euler" to="/leaderL/end_pose_euler" />
     </node>
   </group>
-  <node if="$(arg enable_recording)" name="dual_state_mcap_recorder" pkg="piper" type="record_piper_mcap_unified.py" output="screen" required="false" launch-prefix="$(arg recorder_launch_prefix)">
+  <node if="$(arg enable_recording)" name="dual_state_mcap_recorder" pkg="piper" type="record_piper_mcap.py" output="screen" required="false" launch-prefix="$(arg recorder_launch_prefix)">
     <param name="dataset_root" value="$(arg dataset_root)" />
     <param name="repo_id" value="$(arg repo_id)" />
     <param name="task" value="$(arg task)" />

@@ -28,9 +28,9 @@ from std_srvs.srv import Trigger, TriggerResponse
 
 from piper_recording_common import McapEpisodeRecorder, RosVectorBuffer, make_compressed_image
 from mcap2_camera import CameraCapture, _open, frame_time
-from unified_piper_config import configuration
-from unified_piper_gui import draw_details
-from unified_piper_storage import STREAMS, NAMES, atomic_json, saved_episode_folders
+from piper_config import configuration
+from piper_gui import draw_details
+from piper_storage import STREAMS, NAMES, atomic_json, saved_episode_folders
 
 
 CAMERAS = ("front", "wrist1", "wrist2")

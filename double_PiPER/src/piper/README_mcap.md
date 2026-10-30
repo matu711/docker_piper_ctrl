@@ -1,18 +1,18 @@
-# 単腕・双腕Unified収集
+# 単腕・双腕MCAP収集
 
-正式な入口は `collect_single_piper_mcap_unified.launch` と
-`collect_dual_piper_mcap_unified.launch` の2本です。
+正式な入口は `collect_single_piper_mcap.launch` と
+`collect_dual_piper_mcap.launch` の2本です。
 起動例は [共通ガイド](../../../README_PiPER_guide.md) を参照してください。
 
 ## 共有構成
 
-- `control_piper_unified.py`：Leader・単腕Follower・双腕Followerの起動Adapter。
-- `record_piper_mcap_unified.py`：共通Recorder入口。
-- `unified_piper_recorder.py`：同期、ライフサイクル、端末入力、参照カメラワーカー。
-- `unified_piper_config.py`：アーム数・画像数・topic・次元のAdapter。
-- `unified_piper_single.py`：単腕EE購読と7次元＋EE保存Adapter。
-- `unified_piper_storage.py`：双腕保存、名前予約、atomic JSON。
-- `unified_piper_gui.py`：共通プレビュー、タスク、FPS、状態表示。
+- `control_piper.py`：Leader・単腕Follower・双腕Followerの起動Adapter。
+- `record_piper_mcap.py`：共通Recorder入口。
+- `piper_recorder.py`：同期、ライフサイクル、端末入力、参照カメラワーカー。
+- `piper_config.py`：アーム数・画像数・topic・次元のAdapter。
+- `piper_single.py`：単腕EE購読と7次元＋EE保存Adapter。
+- `piper_storage.py`：双腕保存、名前予約、atomic JSON。
+- `piper_gui.py`：共通プレビュー、タスク、FPS、状態表示。
 - `piper_recording_common.py`：MCAP、同期バッファ、JPEG、単腕保存Writer。
 - `mcap2_camera.py`：名前は維持した共通カメラプロセス管理・時刻変換。
 
@@ -61,6 +61,6 @@ VLAの画像topic配信は別機能で、収集カメラは内部取得です。
 
 ## 検証
 
-`src/mock/test_unified_reference.py`、`test_unified_collection.py`、
+`src/mock/test_piper_collection_reference.py`、`test_piper_collection.py`、
 `test_piper_recording_common.py` で合成ROS・Fake SDK・疑似カメラ・一時保存を検証します。
 実CAN・実カメラ・ROS masterを使いません。実機の動作・保持・停止能力の証明ではありません。

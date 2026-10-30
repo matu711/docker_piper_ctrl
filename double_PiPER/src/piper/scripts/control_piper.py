@@ -12,7 +12,7 @@ def main():
         from piper_ctrl_leader_node_new import PiperLeaderNode
         node = PiperLeaderNode()
     elif configuration == "dual":
-        from unified_piper_follower import PiperFollowerNode
+        from piper_follower import PiperFollowerNode
         node = PiperFollowerNode()
     else:
         # Preserve single-arm command clipping, fault latch, EE, strict home.

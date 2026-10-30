@@ -1,4 +1,4 @@
-"""Shared Unified MCAP, timestamp buffers and compatible single-arm writer.
+"""Shared MCAP, timestamp buffers and compatible single-arm writer.
 
 No CLI, camera ownership, robot services, or collection loop lives here.
 """

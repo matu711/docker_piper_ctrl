@@ -23,11 +23,11 @@ class DockerConfigurationTests(unittest.TestCase):
             fake.chmod(0o755)
             capture = Path(directory)/'args'
             environment = dict(os.environ, PATH=directory+':'+os.environ['PATH'],
-                               PIPER_TEST_ARGS=str(capture), PIPER_IMAGE='unified:test')
+                               PIPER_TEST_ARGS=str(capture), PIPER_IMAGE='piper:test')
             subprocess.run(['sh', str(ROOT/'build.sh'), '--pull=false'], cwd=directory,
                            env=environment, check=True)
             self.assertEqual(capture.read_text().splitlines(),
-                             ['build','--pull=false','-t','unified:test',str(ROOT)])
+                             ['build','--pull=false','-t','piper:test',str(ROOT)])
 
     def test_required_terminal_font_and_japanese_rendering_dependencies(self):
         dockerfile = (ROOT/'Dockerfile').read_text()
@@ -45,14 +45,14 @@ class DockerConfigurationTests(unittest.TestCase):
         self.assertIn('XMODIFIERS=${XMODIFIERS:-}', script)
         self.assertNotIn('${PIPER_CTRL_DIR}/double_PiPER:/home/${USR_NAME}/double_PiPER', script)
 
-    def test_unified_entrypoints_use_system_python_and_are_executable(self):
-        for name in ('control_piper_unified.py','record_piper_mcap_unified.py'):
+    def test_collection_entrypoints_use_system_python_and_are_executable(self):
+        for name in ('control_piper.py','record_piper_mcap.py'):
             path = ROOT/'double_PiPER/src/piper/scripts'/name
             self.assertEqual(path.read_text().splitlines()[0], '#!/usr/bin/python3')
             self.assertTrue(os.access(path, os.X_OK))
 
     def test_dual_dataset_default_matches_runtime_bind_mount(self):
-        path = ROOT/'double_PiPER/src/piper/launch/collect_dual_piper_mcap_unified.launch'
+        path = ROOT/'double_PiPER/src/piper/launch/collect_dual_piper_mcap.launch'
         root = ET.parse(path).getroot()
         self.assertEqual(root.find("arg[@name='dataset_root']").get('default'),
                          '$(env HOME)/piper_dataset/dual')

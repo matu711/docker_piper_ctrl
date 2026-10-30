@@ -45,7 +45,7 @@
   <arg name="auto_enable" default="true" />
   <arg name="gripper_val_mutiple" default="1" />
   <group ns="leader">
-    <node name="ctrl" pkg="piper" type="control_piper_unified.py" output="screen" args="single leader">
+    <node name="ctrl" pkg="piper" type="control_piper.py" output="screen" args="single leader">
       <param name="can_port" value="$(arg can_leader_port)" />
       <param name="auto_enable" value="$(arg auto_enable)" />
       <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
@@ -60,7 +60,7 @@
     </node>
   </group>
   <group ns="follower">
-    <node name="ctrl" pkg="piper" type="control_piper_unified.py" output="screen" args="single follower">
+    <node name="ctrl" pkg="piper" type="control_piper.py" output="screen" args="single follower">
       <param name="can_port" value="$(arg can_follower_port)" />
       <param name="auto_enable" value="$(arg auto_enable)" />
       <param name="gripper_val_mutiple" value="$(arg gripper_val_mutiple)" />
@@ -75,7 +75,7 @@
       <param name="return_leader_with_follower" value="$(arg return_leader_with_follower)" />
     </node>
   </group>
-  <node if="$(arg enable_recording)" name="single_state_mcap_recorder" pkg="piper" type="record_piper_mcap_unified.py" output="screen" required="false" launch-prefix="$(arg recorder_launch_prefix)">
+  <node if="$(arg enable_recording)" name="single_state_mcap_recorder" pkg="piper" type="record_piper_mcap.py" output="screen" required="false" launch-prefix="$(arg recorder_launch_prefix)">
     <param name="dataset_root" value="$(arg dataset_root)" />
     <param name="repo_id" value="$(arg repo_id)" />
     <param name="task" value="$(arg task)" />

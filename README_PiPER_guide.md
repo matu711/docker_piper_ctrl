@@ -1,4 +1,4 @@
-# PiPER Unified・VLA 操作ガイド
+# PiPER MCAP・VLA 操作ガイド
 
 ## Docker環境
 
@@ -43,14 +43,14 @@ bash can_activate.sh can3 1000000 "${PIPER_CAN3_USB:?USB bus-infoを指定}"
 
 同じCANを収集driverとVLA driverで同時に所有させないでください。
 
-## 単腕Unified収集（PiPERコンテナ内）
+## 単腕MCAP収集（PiPERコンテナ内）
 
 Leader can0／Follower can1、front video4／wrist video0の例。
 単腕launch既定のCAN対応はLeader can1／Follower can0なので、ここでは明示指定します。
 
 ```bash
 sorc_devel
-roslaunch piper collect_single_piper_mcap_unified.launch \
+roslaunch piper collect_single_piper_mcap.launch \
   can_leader_port:=can0 \
   can_follower_port:=can1 \
   front_camera:=/dev/video4 \
@@ -58,11 +58,11 @@ roslaunch piper collect_single_piper_mcap_unified.launch \
   dataset_root:="$HOME/piper_dataset/single"
 ```
 
-## 双腕Unified収集（PiPERコンテナ内）
+## 双腕MCAP収集（PiPERコンテナ内）
 
 ```bash
 sorc_devel
-roslaunch piper collect_dual_piper_mcap_unified.launch \
+roslaunch piper collect_dual_piper_mcap.launch \
   can_leader_R_port:=can0 \
   can_follower_R_port:=can1 \
   can_leader_L_port:=can2 \
@@ -152,7 +152,7 @@ rosservice call /piper_vla_dual_runtime/stop '{}'
 ```
 
 双腕VLAは左7→右7で、収集保存順の右→左とは異なります。
-Unifiedの画像取得はROS画像配信とは別で、収集launchをVLA用に併用しません。
+収集用の画像取得はROS画像配信とは別で、収集launchをVLA用に併用しません。
 学習・変換用project_minimalは別環境で、このリポジトリの実行時依存ではありません。
 
 ## 初期姿勢復帰（実機動作）
@@ -186,7 +186,7 @@ PYTHONPATH="$PWD/double_PiPER/src/piper/scripts:$PYTHONPATH" \
 
 # 一時workspaceでのcatkinビルド、import、launch展開
 PYTHONDONTWRITEBYTECODE=1 \
-  /usr/bin/python3 double_PiPER/src/test/test_unified_docker_environment.py
+  /usr/bin/python3 double_PiPER/src/test/test_piper_docker_environment.py
 ```
 
 環境検証はDISPLAYがあると表示確認も行います。完全なCPU検証ではDISPLAYを渡さず、

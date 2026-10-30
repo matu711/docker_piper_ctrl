@@ -28,7 +28,7 @@ def configure_metadata(metadata):
 
 
 def add_sources(recorder):
-    from unified_piper_recorder import Buffer
+    from piper_recorder import Buffer
     recorder.sources["ee"] = Buffer(recorder.metadata["observation_ee_source"], "ee", recorder.mcap,
                                     extractor=extract_ee_pose, msg_class=PoseStamped)
     recorder.mirrors = []
